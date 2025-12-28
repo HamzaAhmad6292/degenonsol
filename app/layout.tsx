@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   },
 }
 
-import { BackgroundAnimation } from "@/components/background-animation"
+import { JungleBackground } from "@/components/jungle-background"
 
 export default function RootLayout({
   children,
@@ -30,7 +30,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${poppins.variable} font-sans antialiased`}>
-        <BackgroundAnimation />
+        <JungleBackground />
         {children}
         <Analytics />
       </body>

@@ -1,5 +1,5 @@
 "use client";
-import { Shield, Heart, Zap, CheckCircle } from "lucide-react"
+import { Shield, Heart, Zap, CheckCircle, Leaf } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { motion } from "framer-motion"
 
@@ -9,19 +9,19 @@ export function AboutSection() {
       icon: Shield,
       title: "Authentic AF",
       description: "No fake promises, no BS. Just real community vibes and transparent tokenomics.",
-      color: "text-primary",
+      color: "text-[#52B788]",
     },
     {
       icon: Heart,
       title: "TikTok Native",
       description: "Born on TikTok, raised by the community. We speak your language - memes.",
-      color: "text-accent",
+      color: "text-[#E07A5F]",
     },
     {
       icon: Zap,
       title: "Lightning Fast",
       description: "Built on blazing-fast tech. Trade, hold, and vibe at the speed of internet culture.",
-      color: "text-secondary",
+      color: "text-[#D4A373]",
     },
   ]
 
@@ -43,7 +43,7 @@ export function AboutSection() {
   return (
     <section id="about" className="py-24 relative overflow-hidden">
       {/* Background Decoration */}
-      <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-primary/5 to-transparent pointer-events-none" />
+      <div className="absolute top-0 right-0 w-1/3 h-full bg-gradient-to-l from-[#2D6A4F]/10 to-transparent pointer-events-none" />
       
       <div className="container mx-auto px-4 relative z-10">
         {/* Section Header */}
@@ -54,11 +54,11 @@ export function AboutSection() {
           transition={{ duration: 0.8 }}
           className="text-center mb-16"
         >
-          <h2 className="text-5xl md:text-7xl font-black mb-6 text-balance">
-            <span className="text-primary">What Is</span> <span className="text-secondary">$degen</span>
-            <span className="text-accent">?</span>
+          <h2 className="text-5xl md:text-7xl font-black mb-6 text-balance text-[#F2E9E4]">
+            <span className="text-[#2D6A4F]">What Is</span> <span className="text-[#D4A373]">$degen</span>
+            <span className="text-[#E07A5F]">?</span>
           </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto text-pretty leading-relaxed">
+          <p className="text-xl text-[#95D5B2] max-w-3xl mx-auto text-pretty leading-relaxed">
             {
               "We're not just another meme token. We're a movement. A lifestyle. A vibe. Built by degens, for degens, with the TikTok community at our core."
             }
@@ -76,11 +76,11 @@ export function AboutSection() {
           {features.map((feature, index) => (
             <motion.div key={index} variants={itemVariants}>
               <Card
-                className="p-8 bg-card border-2 border-border hover:border-primary transition-all duration-300 hover:scale-105 group h-full"
+                className="p-8 bg-[#0B2B26]/60 backdrop-blur-md border border-[#1B4332] hover:border-[#52B788] transition-all duration-300 hover:scale-105 group h-full shadow-lg"
               >
                 <feature.icon className={`w-12 h-12 mb-4 ${feature.color} group-hover:scale-110 transition-transform`} />
-                <h3 className="text-2xl font-bold mb-3 text-foreground">{feature.title}</h3>
-                <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
+                <h3 className="text-2xl font-bold mb-3 text-[#F2E9E4]">{feature.title}</h3>
+                <p className="text-[#95D5B2] leading-relaxed">{feature.description}</p>
               </Card>
             </motion.div>
           ))}
@@ -96,11 +96,11 @@ export function AboutSection() {
             className="order-2 md:order-1"
           >
             <div className="relative">
-              <div className="absolute -inset-4 bg-primary/20 rounded-3xl blur-2xl" />
+              <div className="absolute -inset-4 bg-[#2D6A4F]/20 rounded-3xl blur-2xl" />
               <img 
                 src="/tiktok-profile.png" 
                 alt="Marcell Degen TikTok Profile" 
-                className="relative rounded-3xl shadow-2xl w-full border-4 border-primary/20" 
+                className="relative rounded-3xl shadow-2xl w-full border-4 border-[#2D6A4F]/20" 
               />
             </div>
           </motion.div>
@@ -111,13 +111,13 @@ export function AboutSection() {
             transition={{ duration: 0.8 }}
             className="order-1 md:order-2 space-y-6"
           >
-            <h3 className="text-4xl font-black text-primary text-balance">Our Story</h3>
-            <p className="text-lg text-muted-foreground leading-relaxed">
+            <h3 className="text-4xl font-black text-[#F2E9E4] text-balance">Our Story</h3>
+            <p className="text-lg text-[#95D5B2] leading-relaxed">
               {
                 "It all started with a viral TikTok. @marcelldegen wasn't trying to create the next big thing - he was just vibing, sharing crypto memes, and building a community of real people who got it."
               }
             </p>
-            <p className="text-lg text-muted-foreground leading-relaxed">
+            <p className="text-lg text-[#95D5B2] leading-relaxed">
               {
                 "The community spoke. They wanted something authentic. Something fun. Something that wasn't just another pump and dump. So we created $degen - a token that actually represents the culture."
               }
@@ -132,8 +132,8 @@ export function AboutSection() {
                   transition={{ delay: 0.5 + index * 0.1 }}
                   className="flex items-center gap-3"
                 >
-                  <CheckCircle className="w-6 h-6 text-primary flex-shrink-0" />
-                  <span className="text-foreground font-semibold">{item}</span>
+                  <CheckCircle className="w-6 h-6 text-[#52B788] flex-shrink-0" />
+                  <span className="text-[#F2E9E4] font-semibold">{item}</span>
                 </motion.div>
               ))}
             </div>

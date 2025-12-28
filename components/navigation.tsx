@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Menu, X } from "lucide-react"
+import { Menu, X, Video, Leaf } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 
 export function Navigation() {
@@ -11,15 +11,15 @@ export function Navigation() {
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50)
+      setIsScrolled(window.scrollY > 20)
     }
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
   const navLinks = [
-    { href: "#about", label: "About" },
-    { href: "#tokenomics", label: "Tokenomics" },
+    { href: "#lifestyle", label: "Lifestyle" },
+    { href: "#story", label: "Story" },
     { href: "#community", label: "Community" },
   ]
 
@@ -28,18 +28,23 @@ export function Navigation() {
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.5 }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        isScrolled ? "bg-background/80 backdrop-blur-lg border-b border-border py-2" : "bg-transparent py-4"
-      }`}
+      className={`fixed top-6 left-0 right-0 z-50 flex justify-center px-4 transition-all duration-300`}
     >
-      <div className="container mx-auto px-4">
+      <div 
+        className={`w-full max-w-4xl transition-all duration-300 rounded-full ${
+          isScrolled || isMobileMenuOpen
+            ? "bg-[#051F20]/80 backdrop-blur-xl border border-[#52B788]/20 shadow-lg py-3 px-8" 
+            : "bg-white/5 backdrop-blur-md border border-white/10 py-4 px-8"
+        }`}
+      >
         <div className="flex items-center justify-between">
           <motion.a 
             href="#" 
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="text-2xl md:text-3xl font-black text-primary hover:text-secondary transition-colors"
+            className={`flex items-center gap-2 text-2xl font-black transition-colors text-[#F2E9E4] hover:text-[#52B788]`}
           >
+            <Leaf className="w-6 h-6 text-[#52B788]" />
             $degen
           </motion.a>
 
@@ -53,7 +58,7 @@ export function Navigation() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 * index }}
                 whileHover={{ y: -2 }}
-                className="text-foreground hover:text-secondary transition-colors font-semibold"
+                className={`font-bold text-sm uppercase tracking-wider transition-colors relative group text-[#F2E9E4] hover:text-[#52B788]`}
               >
                 {link.label}
               </motion.a>
@@ -63,8 +68,12 @@ export function Navigation() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.5 }}
             >
-              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg hover:shadow-primary/20 transition-all">
-                Join the Degens
+              <Button 
+                size="sm"
+                className="bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-bold rounded-full px-6 shadow-md border border-[#52B788]/30"
+              >
+                <Video className="w-4 h-4 mr-2" />
+                TikTok
               </Button>
             </motion.div>
           </div>
@@ -72,7 +81,7 @@ export function Navigation() {
           {/* Mobile Menu Button */}
           <motion.button 
             whileTap={{ scale: 0.9 }}
-            className="md:hidden text-foreground p-2" 
+            className={`md:hidden p-2 rounded-full transition-colors text-[#F2E9E4] hover:bg-white/10`}
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
           >
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -86,22 +95,19 @@ export function Navigation() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="md:hidden mt-4 pb-4 border-t border-border pt-4 overflow-hidden"
+              className="md:hidden mt-4 pb-4 border-t border-[#52B788]/20 pt-4 overflow-hidden"
             >
-              <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-4 text-center">
                 {navLinks.map((link) => (
                   <a
                     key={link.href}
                     href={link.href}
-                    className="text-foreground hover:text-secondary transition-colors font-semibold text-lg"
+                    className="text-[#F2E9E4] hover:text-[#52B788] transition-colors font-bold text-lg"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     {link.label}
                   </a>
                 ))}
-                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold w-full py-6 text-lg">
-                  Join the Degens
-                </Button>
               </div>
             </motion.div>
           )}
