@@ -1,18 +1,22 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Poppins } from "next/font/google"
+import { Playfair_Display, Inter } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 
-const poppins = Poppins({
+const playfair = Playfair_Display({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800", "900"],
+  variable: "--font-serif",
+})
+
+const inter = Inter({
+  subsets: ["latin"],
   variable: "--font-sans",
 })
 
 export const metadata: Metadata = {
-  title: "$degen - The Most Authentic TikTok Crypto Token",
-  description: "Join the degens! The most authentic crypto token with deep TikTok community roots.",
+  title: "$degen - The First Otter on Solana",
+  description: "100% Organic. 100% Degen. The Tiktok Viral Otter is on Solana.",
   generator: "v0.app",
   icons: {
     icon: "/favicon.png",
@@ -20,17 +24,17 @@ export const metadata: Metadata = {
   },
 }
 
-import { JungleBackground } from "@/components/jungle-background"
+import { CustomCursor } from "@/components/custom-cursor"
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
-    <html lang="en">
-      <body className={`${poppins.variable} font-sans antialiased`}>
-        <JungleBackground />
+    <html lang="en" className={`${playfair.variable} ${inter.variable}`}>
+      <body className="font-sans bg-[#0F1F12] text-foreground antialiased selection:bg-primary/30 selection:text-primary">
+        <CustomCursor />
         {children}
         <Analytics />
       </body>

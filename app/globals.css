@@ -4,76 +4,50 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Celebrity Otter Theme - Golden Hour Lifestyle */
-  --background: #F9F7F2; /* Warm Off-White */
-  --foreground: #3E2723; /* Dark Espresso */
-  --card: #ffffff;
-  --card-foreground: #3E2723;
-  --popover: #ffffff;
-  --popover-foreground: #3E2723;
-  --primary: #8D6E63; /* Otter Brown */
-  --primary-foreground: #ffffff;
-  --secondary: #69C9D0; /* TikTok Teal */
-  --secondary-foreground: #ffffff;
-  --muted: #EFEBE9;
-  --muted-foreground: #8D6E63;
-  --accent: #FFB74D; /* Golden Hour Sun */
-  --accent-foreground: #3E2723;
-  --destructive: #D32F2F;
+  /* Luxury Jungle Theme */
+  --background: #0F1F12; /* Deep Jungle Green */
+  --foreground: #F0F0F0; /* Off-white text */
+  --card: #1A2C1E;
+  --card-foreground: #F0F0F0;
+  --popover: #1A2C1E;
+  --popover-foreground: #F0F0F0;
+  --primary: #D4AF37; /* Luxury Gold */
+  --primary-foreground: #0F1F12;
+  --secondary: #1A1A1A; /* Dark Charcoal */
+  --secondary-foreground: #F0F0F0;
+  --muted: #2C3E30;
+  --muted-foreground: #A0A0A0;
+  --accent: #C5A059; /* Bronze/Gold Accent */
+  --accent-foreground: #0F1F12;
+  --destructive: #9B2226;
   --destructive-foreground: #ffffff;
-  --border: #D7CCC8;
-  --input: #D7CCC8;
-  --ring: #8D6E63;
-  --chart-1: #8D6E63;
-  --chart-2: #69C9D0;
-  --chart-3: #FFB74D;
-  --chart-4: #3E2723;
-  --chart-5: #A1887F;
-  --radius: 1rem;
-  --sidebar: #F9F7F2;
-  --sidebar-foreground: #3E2723;
-  --sidebar-primary: #8D6E63;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #EFEBE9;
-  --sidebar-accent-foreground: #3E2723;
-  --sidebar-border: #D7CCC8;
-  --sidebar-ring: #8D6E63;
+  --border: #2C3E30;
+  --input: #2C3E30;
+  --ring: #D4AF37;
+  --radius: 0.5rem;
 }
 
 .dark {
-  /* Dark mode - Late Night Drive Vibe */
-  --background: #1a120b; /* Deep Espresso */
-  --foreground: #F9F7F2;
-  --card: #2d241e;
-  --card-foreground: #F9F7F2;
-  --popover: #2d241e;
-  --popover-foreground: #F9F7F2;
-  --primary: #A1887F;
-  --primary-foreground: #ffffff;
-  --secondary: #69C9D0;
-  --secondary-foreground: #ffffff;
-  --muted: #3E2723;
-  --muted-foreground: #A1887F;
-  --accent: #FFB74D;
-  --accent-foreground: #3E2723;
+  /* Same as root for now, as the design is inherently dark/luxury */
+  --background: #0F1F12;
+  --foreground: #F0F0F0;
+  --card: #1A2C1E;
+  --card-foreground: #F0F0F0;
+  --popover: #1A2C1E;
+  --popover-foreground: #F0F0F0;
+  --primary: #D4AF37;
+  --primary-foreground: #0F1F12;
+  --secondary: #1A1A1A;
+  --secondary-foreground: #F0F0F0;
+  --muted: #2C3E30;
+  --muted-foreground: #A0A0A0;
+  --accent: #C5A059;
+  --accent-foreground: #0F1F12;
   --destructive: #9B2226;
   --destructive-foreground: #ffffff;
-  --border: #3E2723;
-  --input: #3E2723;
-  --ring: #A1887F;
-  --chart-1: #A1887F;
-  --chart-2: #69C9D0;
-  --chart-3: #FFB74D;
-  --chart-4: #69C9D0;
-  --chart-5: #8D6E63;
-  --sidebar: #1a120b;
-  --sidebar-foreground: #F9F7F2;
-  --sidebar-primary: #A1887F;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #2d241e;
-  --sidebar-accent-foreground: #F9F7F2;
-  --sidebar-border: #3E2723;
-  --sidebar-ring: #A1887F;
+  --border: #2C3E30;
+  --input: #2C3E30;
+  --ring: #D4AF37;
 }
 
 @theme inline {
