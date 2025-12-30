@@ -36,7 +36,7 @@ export function LuxurySocials() {
     {
       name: "Community",
       icon: XIcon,
-      href: "https://twitter.com/i/communities/123456789",
+      href: "https://x.com/Marcelldegensol",
       color: "hover:text-white",
     },
     {
