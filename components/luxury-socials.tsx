@@ -30,7 +30,7 @@ export function LuxurySocials() {
     {
       name: "X",
       icon: XIcon,
-      href: "https://twitter.com/degenonsol",
+      href: "https://x.com/Marcelldegensol",
       color: "hover:text-white",
     },
     {
