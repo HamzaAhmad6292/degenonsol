@@ -21,7 +21,7 @@ export function CopyAddress() {
         onClick={handleCopy}
         className="group relative flex items-center gap-3 px-4 md:px-6 py-2 md:py-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-primary/50 rounded-full transition-all duration-300 backdrop-blur-md max-w-[90vw]"
       >
-        <span className="font-mono text-primary text-sm md:text-lg truncate">{address}</span>
+        <span className="font-mono text-primary text-sm md:text-lg truncate">4Nc2EhF8vqXcjHpbUevYZv9Bv4aKb4fWi7cju7c2pump</span>
         <div className="relative">
           <AnimatePresence mode="wait">
             {copied ? (
