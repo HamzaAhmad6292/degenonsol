@@ -119,11 +119,8 @@ export function SideChatBubbles({ onSentimentChange }: SideChatBubblesProps) {
     // Analyze sentiment of user message
     const sentiment = analyzeSentiment(input.trim())
     if (onSentimentChange) {
-      // Only update if sentiment is positive or negative (not neutral)
-      // This makes the mood persist until a new sentiment is detected
-      if (sentiment === "positive" || sentiment === "negative") {
-        onSentimentChange(sentiment)
-      }
+      // Always update sentiment (including neutral) so GIF can follow price when neutral
+      onSentimentChange(sentiment)
     }
 
     setMessages((prev) => [...prev, userMessage])

@@ -31,34 +31,33 @@ export function FullscreenOtterDisplay({ chatSentiment = null }: FullscreenOtter
     }
   }, [priceData.price, basePrice])
 
+  // Calculate price change for glow effect and GIF logic
+  const priceChangePercent = basePrice > 0 
+    ? ((priceData.price - basePrice) / basePrice) * 100 
+    : 0
+  const priceThreshold = 2 // 2% threshold
+
   useEffect(() => {
     if (priceData.price > 0 && basePrice > 0) {
-      // Calculate percentage change from base price
-      const priceChangePercent = ((priceData.price - basePrice) / basePrice) * 100
-      const threshold = 3 // 3% threshold
-      
-      // Determine GIF state based on price change (3% threshold) or chat sentiment
+      // Determine GIF state based on sentiment or price (if neutral)
       let newState: "happy" | "sad" | "idle" = gifState
       
-      // Priority 1: Chat sentiment (if present) - persists until new sentiment
+      // Priority 1: Chat sentiment (if positive or negative)
       if (chatSentiment === "positive") {
         newState = "happy"
       } else if (chatSentiment === "negative") {
         newState = "sad"
       }
-      // Priority 2: Price movement (only if >= 3% change and no active sentiment)
-      else if (chatSentiment === null || chatSentiment === "neutral") {
-        if (priceChangePercent >= threshold) {
+      // Priority 2: For neutral sentiment, follow price movement (2% threshold)
+      else if (chatSentiment === "neutral" || chatSentiment === null) {
+        if (priceChangePercent >= priceThreshold) {
           newState = "happy"
-        } else if (priceChangePercent <= -threshold) {
+        } else if (priceChangePercent <= -priceThreshold) {
           newState = "sad"
         } else {
-          // If price change is less than 3%, keep idle
+          // If price change is less than 2%, keep idle
           newState = "idle"
         }
-      } else {
-        // Keep current state if sentiment is active
-        newState = gifState
       }
       
       // Only update if state changed
@@ -77,17 +76,19 @@ export function FullscreenOtterDisplay({ chatSentiment = null }: FullscreenOtter
         return newHistory.slice(-30)
       })
     }
-  }, [priceData, basePrice, chatSentiment, gifState])
+  }, [priceData, basePrice, chatSentiment, gifState, priceChangePercent, priceThreshold])
 
-  // Glow colors: white for idle, green for happy, red for sad
-  const glowColor = gifState === "happy" 
-    ? "rgba(34, 197, 94, 0.5)" 
-    : gifState === "sad" 
-    ? "rgba(239, 68, 68, 0.4)" 
-    : "rgba(255, 255, 255, 0.3)" // White glow for idle
+  // Glow colors: Based entirely on price movement (2% threshold)
+  
+  const glowColor = priceChangePercent >= priceThreshold
+    ? "rgba(34, 197, 94, 0.5)" // Green for price increase
+    : priceChangePercent <= -priceThreshold
+    ? "rgba(239, 68, 68, 0.4)" // Red for price decrease
+    : "rgba(255, 255, 255, 0.3)" // White glow for idle (no significant change)
   
   const gifPath = `/gifs/${gifState}.gif`
-  const isPositive = priceData.priceChange === "up" || gifState === "happy"
+  // For chart color, use price movement (2% threshold)
+  const isPositive = priceChangePercent >= priceThreshold
 
   return (
     <div className="fixed inset-0 w-full h-screen overflow-hidden">
@@ -96,11 +97,11 @@ export function FullscreenOtterDisplay({ chatSentiment = null }: FullscreenOtter
         className="absolute inset-0 transition-all duration-1000 ease-in-out z-0"
         style={{
           background: `linear-gradient(135deg, ${
-            gifState === "happy" 
-              ? "rgba(34, 197, 94, 0.15)" 
-              : gifState === "sad" 
-              ? "rgba(239, 68, 68, 0.1)" 
-              : "rgba(255, 255, 255, 0.05)" // White for idle
+            priceChangePercent >= priceThreshold
+              ? "rgba(34, 197, 94, 0.15)" // Green for price increase
+              : priceChangePercent <= -priceThreshold
+              ? "rgba(239, 68, 68, 0.1)" // Red for price decrease
+              : "rgba(255, 255, 255, 0.05)" // White for idle (no significant change)
           } 0%, rgba(0, 0, 0, 0.85) 100%)`,
           boxShadow: `0 0 80px ${glowColor}, inset 0 0 80px ${glowColor}`,
         }}
