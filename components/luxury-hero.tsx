@@ -55,6 +55,12 @@ export function LuxuryHero() {
             >
               View Chart
             </a>
+            <a
+              href="/chat"
+              className="w-full sm:w-auto px-8 md:px-12 py-4 border border-primary/50 text-primary font-bold rounded-full hover:bg-primary/10 transition-all duration-300 backdrop-blur-md hover:scale-105 uppercase tracking-widest text-xs flex items-center justify-center"
+            >
+              Chat with Otter
+            </a>
           </div>
         </motion.div>
       </div>
