@@ -10,67 +10,66 @@ interface PricePoint {
   time: number
 }
 
-export function FullscreenOtterDisplay() {
+interface FullscreenOtterDisplayProps {
+  chatSentiment?: "positive" | "negative" | "neutral" | null
+}
+
+export function FullscreenOtterDisplay({ chatSentiment = null }: FullscreenOtterDisplayProps) {
   const { priceData, loading } = useTokenPrice(10000)
-  // Initialize with happy state and green glow
-  const [gifState, setGifState] = useState<"happy" | "sad" | "idle">("happy")
+  // Initialize with idle state and white glow
+  const [gifState, setGifState] = useState<"happy" | "sad" | "idle">("idle")
   const [previousGifState, setPreviousGifState] = useState<"happy" | "sad" | "idle" | null>(null)
   const [priceHistory, setPriceHistory] = useState<PricePoint[]>([])
-  const [canChangeState, setCanChangeState] = useState(false)
+  const [basePrice, setBasePrice] = useState<number>(0)
   
-  // Wait 5 seconds before allowing state changes - show happy on initial load
+  // Set base price on first load
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setCanChangeState(true)
-    }, 5000)
-    return () => clearTimeout(timer)
-  }, [])
-  
-  // Initialize with sample price data so chart shows immediately
-  useEffect(() => {
-    if (priceHistory.length === 0) {
-      const now = Date.now()
-      const samplePrice = priceData.price > 0 ? priceData.price : 0.0001
-      // Create 20 sample points for initial display with a gentle upward trend
-      const samples: PricePoint[] = []
-      for (let i = 0; i < 20; i++) {
-        // Create a smooth wave-like pattern with a slight upward trend
-        const trendFactor = 1 + (i / 20) * 0.05 // 5% increase over time
-        const waveFactor = Math.sin(i / 3) * 0.015 // Gentle wave ±1.5%
-        const noiseFactor = (Math.random() - 0.5) * 0.005 // Small noise ±0.25%
-        samples.push({
-          price: samplePrice * trendFactor * (1 + waveFactor + noiseFactor),
-          time: now - (20 - i) * 5000,
-        })
-      }
-      setPriceHistory(samples)
+    if (priceData.price > 0 && basePrice === 0) {
+      setBasePrice(priceData.price)
+      // Initialize price history with current price
+      setPriceHistory([{ price: priceData.price, time: Date.now() }])
     }
-  }, [priceHistory.length, priceData.price])
+  }, [priceData.price, basePrice])
 
   useEffect(() => {
-    if (priceData.price > 0) {
-      // Only change GIF state after initial 5-second delay
-      if (canChangeState) {
-        // Determine GIF state based on price change
-        let newState: "happy" | "sad" | "idle" = gifState
-        if (priceData.priceChange === "up") {
+    if (priceData.price > 0 && basePrice > 0) {
+      // Calculate percentage change from base price
+      const priceChangePercent = ((priceData.price - basePrice) / basePrice) * 100
+      const threshold = 3 // 3% threshold
+      
+      // Determine GIF state based on price change (3% threshold) or chat sentiment
+      let newState: "happy" | "sad" | "idle" = gifState
+      
+      // Priority 1: Chat sentiment (if present) - persists until new sentiment
+      if (chatSentiment === "positive") {
+        newState = "happy"
+      } else if (chatSentiment === "negative") {
+        newState = "sad"
+      }
+      // Priority 2: Price movement (only if >= 3% change and no active sentiment)
+      else if (chatSentiment === null || chatSentiment === "neutral") {
+        if (priceChangePercent >= threshold) {
           newState = "happy"
-        } else if (priceData.priceChange === "down") {
+        } else if (priceChangePercent <= -threshold) {
           newState = "sad"
-        } else if (priceData.priceChange === "same" && priceData.previousPrice > 0) {
-          newState = "sad"
+        } else {
+          // If price change is less than 3%, keep idle
+          newState = "idle"
         }
-        
-        // Only update if state changed
-        if (newState !== gifState) {
-          setPreviousGifState(gifState)
-          setGifState(newState)
-          // Clear previous state after transition
-          setTimeout(() => setPreviousGifState(null), 500)
-        }
+      } else {
+        // Keep current state if sentiment is active
+        newState = gifState
+      }
+      
+      // Only update if state changed
+      if (newState !== gifState) {
+        setPreviousGifState(gifState)
+        setGifState(newState)
+        // Clear previous state after transition
+        setTimeout(() => setPreviousGifState(null), 500)
       }
 
-      // Update price history (always, regardless of delay)
+      // Update price history
       const now = Date.now()
       setPriceHistory((prev) => {
         const newHistory = [...prev, { price: priceData.price, time: now }]
@@ -78,14 +77,14 @@ export function FullscreenOtterDisplay() {
         return newHistory.slice(-30)
       })
     }
-  }, [priceData, gifState, canChangeState])
+  }, [priceData, basePrice, chatSentiment, gifState])
 
-  // Initial state: green glow for happy
+  // Glow colors: white for idle, green for happy, red for sad
   const glowColor = gifState === "happy" 
     ? "rgba(34, 197, 94, 0.5)" 
     : gifState === "sad" 
     ? "rgba(239, 68, 68, 0.4)" 
-    : "rgba(34, 197, 94, 0.3)" // Default to green instead of gold
+    : "rgba(255, 255, 255, 0.3)" // White glow for idle
   
   const gifPath = `/gifs/${gifState}.gif`
   const isPositive = priceData.priceChange === "up" || gifState === "happy"
@@ -101,7 +100,7 @@ export function FullscreenOtterDisplay() {
               ? "rgba(34, 197, 94, 0.15)" 
               : gifState === "sad" 
               ? "rgba(239, 68, 68, 0.1)" 
-              : "rgba(34, 197, 94, 0.1)" // Default to green
+              : "rgba(255, 255, 255, 0.05)" // White for idle
           } 0%, rgba(0, 0, 0, 0.85) 100%)`,
           boxShadow: `0 0 80px ${glowColor}, inset 0 0 80px ${glowColor}`,
         }}

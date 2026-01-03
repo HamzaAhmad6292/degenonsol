@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Send, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { analyzeSentiment, type Sentiment } from "@/lib/sentiment-analyzer"
 
 interface Message {
   id: string
@@ -12,7 +13,11 @@ interface Message {
   timestamp: Date
 }
 
-export function SideChatBubbles() {
+interface SideChatBubblesProps {
+  onSentimentChange?: (sentiment: Sentiment | null) => void
+}
+
+export function SideChatBubbles({ onSentimentChange }: SideChatBubblesProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -111,6 +116,16 @@ export function SideChatBubbles() {
       timestamp: new Date(),
     }
 
+    // Analyze sentiment of user message
+    const sentiment = analyzeSentiment(input.trim())
+    if (onSentimentChange) {
+      // Only update if sentiment is positive or negative (not neutral)
+      // This makes the mood persist until a new sentiment is detected
+      if (sentiment === "positive" || sentiment === "negative") {
+        onSentimentChange(sentiment)
+      }
+    }
+
     setMessages((prev) => [...prev, userMessage])
     const messageContent = input.trim()
     setInput("")
@@ -168,113 +183,95 @@ export function SideChatBubbles() {
 
   return (
     <>
-      {/* Left Side - Assistant Messages */}
-      <div className="absolute left-2 md:left-6 top-[40%] z-30 w-[240px] md:w-[280px] max-h-[45vh] overflow-y-auto space-y-2 pointer-events-none">
-        <AnimatePresence>
-          {messages
-            .filter((msg) => msg.role === "assistant")
-            .map((message) => (
-              <motion.div
-                key={message.id}
-                initial={{ opacity: 0, x: -20, scale: 0.9 }}
-                animate={{ opacity: 1, x: 0, scale: 1 }}
-                exit={{ opacity: 0, x: -20, scale: 0.9 }}
-                className="flex justify-start"
-              >
-                <div
-                  className="rounded-2xl p-3 max-w-[85%] text-sm"
-                  style={{
-                    background: "rgba(255, 255, 255, 0.15)",
-                    backdropFilter: "blur(12px) saturate(1.2)",
-                    WebkitBackdropFilter: "blur(12px) saturate(1.2)",
-                    border: "1px solid rgba(255, 255, 255, 0.3)",
-                    boxShadow: `
-                      0 8px 32px rgba(0, 0, 0, 0.3),
-                      inset 0 1px 0 rgba(255, 255, 255, 0.2)
-                    `,
-                  }}
+      {/* Conversation Flow - Messages in order with alternating sides */}
+      <div 
+        ref={messagesEndRef}
+        className="absolute left-1/2 -translate-x-1/2 top-[35%] z-30 w-[90%] max-w-2xl max-h-[50vh] overflow-y-auto pointer-events-none"
+      >
+        <div className="relative space-y-3">
+          <AnimatePresence>
+            {messages.map((message) => {
+              const isAssistant = message.role === "assistant"
+              
+              return (
+                <motion.div
+                  key={message.id}
+                  initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -20, scale: 0.9 }}
+                  className={`flex ${isAssistant ? "justify-start" : "justify-end"}`}
                 >
-                  <p className="text-white leading-relaxed whitespace-pre-wrap">
-                    {message.content}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
-        </AnimatePresence>
-        {isTyping && (
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex justify-start"
-          >
-            <div
-              className="rounded-2xl p-3"
-              style={{
-                background: "rgba(255, 255, 255, 0.15)",
-                backdropFilter: "blur(12px) saturate(1.2)",
-                border: "1px solid rgba(255, 255, 255, 0.3)",
-              }}
+                  <div
+                    className={`rounded-2xl p-3 max-w-[70%] text-sm ${
+                      isAssistant ? "ml-0" : "mr-0"
+                    }`}
+                    style={{
+                      background: isAssistant
+                        ? "rgba(255, 255, 255, 0.15)"
+                        : "rgba(212, 175, 55, 0.25)",
+                      backdropFilter: "blur(12px) saturate(1.2)",
+                      WebkitBackdropFilter: "blur(12px) saturate(1.2)",
+                      border: isAssistant
+                        ? "1px solid rgba(255, 255, 255, 0.3)"
+                        : "1px solid rgba(212, 175, 55, 0.4)",
+                      boxShadow: `
+                        0 8px 32px rgba(0, 0, 0, 0.3),
+                        inset 0 1px 0 rgba(255, 255, 255, 0.2)
+                      `,
+                    }}
+                  >
+                    <p className="text-white leading-relaxed whitespace-pre-wrap">
+                      {message.content}
+                    </p>
+                  </div>
+                </motion.div>
+              )
+            })}
+          </AnimatePresence>
+          
+          {/* Typing Indicator */}
+          {isTyping && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex justify-start"
             >
-              <Loader2 className="w-4 h-4 animate-spin text-white" />
-            </div>
-          </motion.div>
-        )}
-        {currentStreamingMessage && (
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex justify-start"
-          >
-            <div
-              className="rounded-2xl p-3 max-w-[85%] text-sm"
-              style={{
-                background: "rgba(255, 255, 255, 0.15)",
-                backdropFilter: "blur(12px) saturate(1.2)",
-                border: "1px solid rgba(255, 255, 255, 0.3)",
-              }}
-            >
-              <p className="text-white leading-relaxed whitespace-pre-wrap">
-                {currentStreamingMessage}
-                <span className="animate-pulse">▊</span>
-              </p>
-            </div>
-          </motion.div>
-        )}
-      </div>
-
-      {/* Right Side - User Messages */}
-      <div className="absolute right-2 md:right-6 top-[40%] z-30 w-[240px] md:w-[280px] max-h-[45vh] overflow-y-auto space-y-2 pointer-events-none">
-        <AnimatePresence>
-          {messages
-            .filter((msg) => msg.role === "user")
-            .map((message) => (
-              <motion.div
-                key={message.id}
-                initial={{ opacity: 0, x: 20, scale: 0.9 }}
-                animate={{ opacity: 1, x: 0, scale: 1 }}
-                exit={{ opacity: 0, x: 20, scale: 0.9 }}
-                className="flex justify-end"
+              <div
+                className="rounded-2xl p-3"
+                style={{
+                  background: "rgba(255, 255, 255, 0.15)",
+                  backdropFilter: "blur(12px) saturate(1.2)",
+                  border: "1px solid rgba(255, 255, 255, 0.3)",
+                }}
               >
-                <div
-                  className="rounded-2xl p-3 max-w-[85%] text-sm"
-                  style={{
-                    background: "rgba(212, 175, 55, 0.25)",
-                    backdropFilter: "blur(12px) saturate(1.2)",
-                    WebkitBackdropFilter: "blur(12px) saturate(1.2)",
-                    border: "1px solid rgba(212, 175, 55, 0.4)",
-                    boxShadow: `
-                      0 8px 32px rgba(0, 0, 0, 0.3),
-                      inset 0 1px 0 rgba(255, 255, 255, 0.2)
-                    `,
-                  }}
-                >
-                  <p className="text-white leading-relaxed whitespace-pre-wrap">
-                    {message.content}
-                  </p>
-                </div>
-              </motion.div>
-            ))}
-        </AnimatePresence>
+                <Loader2 className="w-4 h-4 animate-spin text-white" />
+              </div>
+            </motion.div>
+          )}
+          
+          {/* Streaming Message */}
+          {currentStreamingMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex justify-start"
+            >
+              <div
+                className="rounded-2xl p-3 max-w-[70%] text-sm"
+                style={{
+                  background: "rgba(255, 255, 255, 0.15)",
+                  backdropFilter: "blur(12px) saturate(1.2)",
+                  border: "1px solid rgba(255, 255, 255, 0.3)",
+                }}
+              >
+                <p className="text-white leading-relaxed whitespace-pre-wrap">
+                  {currentStreamingMessage}
+                  <span className="animate-pulse">▊</span>
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </div>
       </div>
 
       {/* Input Section - Bottom Center */}

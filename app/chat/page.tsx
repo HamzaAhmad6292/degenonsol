@@ -1,16 +1,20 @@
 "use client"
 
+import { useState } from "react"
 import { FullscreenOtterDisplay } from "@/components/fullscreen-otter-display"
 import { SideChatBubbles } from "@/components/side-chat-bubbles"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
+import { type Sentiment } from "@/lib/sentiment-analyzer"
 
 export default function ChatPage() {
+  const [chatSentiment, setChatSentiment] = useState<Sentiment | null>(null)
+
   return (
     <main className="fixed inset-0 w-full h-screen overflow-hidden bg-black">
-      {/* Full Screen Otter Display with Candlestick Chart Background */}
-      <FullscreenOtterDisplay />
+      {/* Full Screen Otter Display with Chart Background */}
+      <FullscreenOtterDisplay chatSentiment={chatSentiment} />
 
       {/* Navigation Back Button */}
       <motion.div
@@ -28,7 +32,7 @@ export default function ChatPage() {
       </motion.div>
 
       {/* Side Chat Bubbles - Left and Right of GIF with Input at Bottom */}
-      <SideChatBubbles />
+      <SideChatBubbles onSentimentChange={setChatSentiment} />
     </main>
   )
 }
