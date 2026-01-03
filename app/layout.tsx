@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   },
 }
 
-import { CustomCursor } from "@/components/custom-cursor"
+
 
 export default function RootLayout({
   children,
@@ -34,7 +34,6 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${playfair.variable} ${inter.variable}`}>
       <body className="font-sans bg-[#0F1F12] text-foreground antialiased selection:bg-primary/30 selection:text-primary">
-        <CustomCursor />
         {children}
         <Analytics />
       </body>

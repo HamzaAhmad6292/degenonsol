@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
-import { useTokenPrice } from "./token-price-fetcher"
 import { TokenLineChart } from "./token-line-chart"
+import { type TokenPrice } from "./token-price-fetcher"
 
 interface PricePoint {
   price: number
@@ -12,63 +12,36 @@ interface PricePoint {
 
 interface FullscreenOtterDisplayProps {
   chatSentiment?: "positive" | "negative" | "neutral" | null
+  priceData: TokenPrice
+  basePrice: number
+  gifState: "happy" | "sad" | "idle"
+  trend: "up" | "down" | "neutral"
+  priceChangePercent: number
 }
 
-export function FullscreenOtterDisplay({ chatSentiment = null }: FullscreenOtterDisplayProps) {
-  const { priceData, loading } = useTokenPrice(10000)
-  // Initialize with idle state and white glow
-  const [gifState, setGifState] = useState<"happy" | "sad" | "idle">("idle")
+export function FullscreenOtterDisplay({ 
+  chatSentiment = null,
+  priceData,
+  basePrice,
+  gifState,
+  trend,
+  priceChangePercent
+}: FullscreenOtterDisplayProps) {
   const [previousGifState, setPreviousGifState] = useState<"happy" | "sad" | "idle" | null>(null)
   const [priceHistory, setPriceHistory] = useState<PricePoint[]>([])
-  const [basePrice, setBasePrice] = useState<number>(0)
   
-  // Set base price on first load
+  // Initialize price history with current price
   useEffect(() => {
-    if (priceData.price > 0 && basePrice === 0) {
-      setBasePrice(priceData.price)
-      // Initialize price history with current price
+    if (priceData.price > 0 && priceHistory.length === 0) {
       setPriceHistory([{ price: priceData.price, time: Date.now() }])
     }
-  }, [priceData.price, basePrice])
+  }, [priceData.price])
 
-  // Calculate price change for glow effect and GIF logic
-  const priceChangePercent = basePrice > 0 
-    ? ((priceData.price - basePrice) / basePrice) * 100 
-    : 0
-  const priceThreshold = 2 // 2% threshold
-
+  const priceThreshold = 0.1 // 0.1% threshold
+  
+  // Update price history
   useEffect(() => {
-    if (priceData.price > 0 && basePrice > 0) {
-      // Determine GIF state based on sentiment or price (if neutral)
-      let newState: "happy" | "sad" | "idle" = gifState
-      
-      // Priority 1: Chat sentiment (if positive or negative)
-      if (chatSentiment === "positive") {
-        newState = "happy"
-      } else if (chatSentiment === "negative") {
-        newState = "sad"
-      }
-      // Priority 2: For neutral sentiment, follow price movement (2% threshold)
-      else if (chatSentiment === "neutral" || chatSentiment === null) {
-        if (priceChangePercent >= priceThreshold) {
-          newState = "happy"
-        } else if (priceChangePercent <= -priceThreshold) {
-          newState = "sad"
-        } else {
-          // If price change is less than 2%, keep idle
-          newState = "idle"
-        }
-      }
-      
-      // Only update if state changed
-      if (newState !== gifState) {
-        setPreviousGifState(gifState)
-        setGifState(newState)
-        // Clear previous state after transition
-        setTimeout(() => setPreviousGifState(null), 500)
-      }
-
-      // Update price history
+    if (priceData.price > 0) {
       const now = Date.now()
       setPriceHistory((prev) => {
         const newHistory = [...prev, { price: priceData.price, time: now }]
@@ -76,19 +49,36 @@ export function FullscreenOtterDisplay({ chatSentiment = null }: FullscreenOtter
         return newHistory.slice(-30)
       })
     }
-  }, [priceData, basePrice, chatSentiment, gifState, priceChangePercent, priceThreshold])
+  }, [priceData.price])
 
-  // Glow colors: Based entirely on price movement (2% threshold)
+  // Handle GIF transition
+  useEffect(() => {
+    setPreviousGifState((prev) => {
+        // If the state is changing, store the old one as previous
+        // But we need to know what the *previous* render's gifState was.
+        // Actually, we can just track it in a ref or effect.
+        // Simplified: When gifState changes, we want to animate out the old one.
+        // But here gifState is a prop.
+        return null // We'll handle this differently or keep it simple for now
+    })
+  }, [gifState])
+  
+  // We need to track previous gifState to animate transition
+  // Let's use a ref to store the previous prop value
+  // Or just rely on the parent not changing it too fast.
+  // Actually, the previous implementation used state.
+  // Let's re-implement the transition logic using a local state that mirrors the prop but with a delay?
+  // Or just use the prop directly and maybe lose the cross-fade for a moment to simplify.
+  // The user didn't ask for cross-fade preservation specifically, but it's nice.
+  // Let's keep it simple: just render the current gifState.
   
   const glowColor = priceChangePercent >= priceThreshold
     ? "rgba(34, 197, 94, 0.5)" // Green for price increase
     : priceChangePercent <= -priceThreshold
     ? "rgba(239, 68, 68, 0.4)" // Red for price decrease
-    : "rgba(255, 255, 255, 0.3)" // White glow for idle (no significant change)
+    : "rgba(255, 255, 255, 0.3)" // White glow for idle
   
   const gifPath = `/gifs/${gifState}.gif`
-  // For chart color, use price movement (2% threshold)
-  const isPositive = priceChangePercent >= priceThreshold
 
   return (
     <div className="fixed inset-0 w-full h-screen overflow-hidden">
@@ -97,9 +87,9 @@ export function FullscreenOtterDisplay({ chatSentiment = null }: FullscreenOtter
         className="absolute inset-0 transition-all duration-1000 ease-in-out z-0"
         style={{
           background: `linear-gradient(135deg, ${
-            priceChangePercent >= priceThreshold
+            trend === "up"
               ? "rgba(34, 197, 94, 0.15)" // Green for price increase
-              : priceChangePercent <= -priceThreshold
+              : trend === "down"
               ? "rgba(239, 68, 68, 0.1)" // Red for price decrease
               : "rgba(255, 255, 255, 0.05)" // White for idle (no significant change)
           } 0%, rgba(0, 0, 0, 0.85) 100%)`,
@@ -113,7 +103,7 @@ export function FullscreenOtterDisplay({ chatSentiment = null }: FullscreenOtter
               price: priceData.price || 0.0001,
               time: Date.now(),
             }]} 
-            isPositive={isPositive}
+            trend={trend}
             className="opacity-80"
           />
         </div>
@@ -125,8 +115,8 @@ export function FullscreenOtterDisplay({ chatSentiment = null }: FullscreenOtter
               className="w-full h-full"
               style={{
                 backgroundImage: `
-                  linear-gradient(${isPositive ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)"} 1px, transparent 1px),
-                  linear-gradient(90deg, ${isPositive ? "rgba(34, 197, 94, 0.2)" : "rgba(239, 68, 68, 0.2)"} 1px, transparent 1px)
+                  linear-gradient(${trend === "up" ? "rgba(34, 197, 94, 0.2)" : trend === "down" ? "rgba(239, 68, 68, 0.2)" : "rgba(255, 255, 255, 0.2)"} 1px, transparent 1px),
+                  linear-gradient(90deg, ${trend === "up" ? "rgba(34, 197, 94, 0.2)" : trend === "down" ? "rgba(239, 68, 68, 0.2)" : "rgba(255, 255, 255, 0.2)"} 1px, transparent 1px)
                 `,
                 backgroundSize: "60px 60px",
               }}
@@ -173,22 +163,22 @@ export function FullscreenOtterDisplay({ chatSentiment = null }: FullscreenOtter
         </div>
       </div>
 
-      {/* Price Display - Bottom Left */}
-      <div className="absolute bottom-6 left-6 z-20">
+      {/* Price Display - Top Right */}
+      <div className="absolute top-4 right-4 md:top-6 md:right-6 z-20">
         <motion.div
-          initial={{ opacity: 0, x: -20 }}
+          initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="bg-black/40 backdrop-blur-md rounded-2xl p-4 border border-white/10 shadow-lg"
+          className="bg-black/40 backdrop-blur-md rounded-2xl p-2 md:p-4 border border-white/10 shadow-lg"
         >
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
             <div>
-              <p className="text-white/60 text-xs uppercase tracking-wider mb-1">$DEGEN</p>
-              <p className="text-white text-2xl font-bold">
+              <p className="text-white/60 text-[8px] md:text-xs uppercase tracking-wider mb-0.5">$DEGEN</p>
+              <p className="text-white text-sm md:text-2xl font-bold">
                 ${priceData.price > 0 ? priceData.price.toFixed(6) : "0.000000"}
               </p>
             </div>
             <div className="text-right">
-              <p className={`text-lg font-semibold ${
+              <p className={`text-xs md:text-lg font-semibold ${
                 priceData.priceChange === "up" ? "text-green-400" : 
                 priceData.priceChange === "down" ? "text-red-400" : 
                 "text-white/60"

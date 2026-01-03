@@ -10,19 +10,19 @@ interface PricePoint {
 
 interface TokenLineChartProps {
   data: PricePoint[]
-  isPositive: boolean
+  trend?: "up" | "down" | "neutral"
   className?: string
 }
 
-export function TokenLineChart({ data, isPositive, className }: TokenLineChartProps) {
+export function TokenLineChart({ data, trend = "neutral", className }: TokenLineChartProps) {
   const [animationProgress, setAnimationProgress] = useState(0)
   const [isAnimating, setIsAnimating] = useState(true)
 
   // Colors based on trend
-  const lineColor = isPositive ? "#22c55e" : "#ef4444"
-  const glowColor = isPositive ? "rgba(34, 197, 94, 0.6)" : "rgba(239, 68, 68, 0.6)"
-  const gradientStart = isPositive ? "rgba(34, 197, 94, 0.4)" : "rgba(239, 68, 68, 0.4)"
-  const gradientEnd = isPositive ? "rgba(34, 197, 94, 0)" : "rgba(239, 68, 68, 0)"
+  const lineColor = trend === "up" ? "#22c55e" : trend === "down" ? "#ef4444" : "#ffffff"
+  const glowColor = trend === "up" ? "rgba(34, 197, 94, 0.6)" : trend === "down" ? "rgba(239, 68, 68, 0.6)" : "rgba(255, 255, 255, 0.4)"
+  const gradientStart = trend === "up" ? "rgba(34, 197, 94, 0.4)" : trend === "down" ? "rgba(239, 68, 68, 0.4)" : "rgba(255, 255, 255, 0.2)"
+  const gradientEnd = trend === "up" ? "rgba(34, 197, 94, 0)" : trend === "down" ? "rgba(239, 68, 68, 0)" : "rgba(255, 255, 255, 0)"
 
   // Generate smooth path from data points
   const { linePath, areaPath, points } = useMemo(() => {
@@ -81,9 +81,9 @@ export function TokenLineChart({ data, isPositive, className }: TokenLineChartPr
   if (!linePath || points.length < 2) return null
 
   // Unique IDs for gradients
-  const gradientId = `lineGradient-${isPositive ? 'up' : 'down'}`
-  const areaGradientId = `areaGradient-${isPositive ? 'up' : 'down'}`
-  const glowId = `glowFilter-${isPositive ? 'up' : 'down'}`
+  const gradientId = `lineGradient-${trend}`
+  const areaGradientId = `areaGradient-${trend}`
+  const glowId = `glowFilter-${trend}`
 
   return (
     <div 
@@ -212,7 +212,7 @@ export function TokenLineChart({ data, isPositive, className }: TokenLineChartPr
             y1={y}
             x2="100"
             y2={y}
-            stroke={isPositive ? "rgba(34, 197, 94, 0.1)" : "rgba(239, 68, 68, 0.1)"}
+            stroke={trend === "up" ? "rgba(34, 197, 94, 0.1)" : trend === "down" ? "rgba(239, 68, 68, 0.1)" : "rgba(255, 255, 255, 0.1)"}
             strokeWidth="0.1"
             strokeDasharray="2,4"
             initial={{ opacity: 0 }}
@@ -238,7 +238,7 @@ export function TokenLineChart({ data, isPositive, className }: TokenLineChartPr
             animate={{ 
               opacity: [0, 0.8, 0],
               scale: [0, 1, 0.5],
-              y: [0, isPositive ? -20 : 20],
+              y: [0, trend === "up" ? -20 : trend === "down" ? 20 : 0],
             }}
             transition={{
               duration: 3,
