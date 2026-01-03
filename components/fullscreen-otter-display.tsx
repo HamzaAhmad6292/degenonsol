@@ -3,13 +3,10 @@
 import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { useTokenPrice } from "./token-price-fetcher"
-import { CandlestickChart } from "./candlestick-chart"
+import { TokenLineChart } from "./token-line-chart"
 
-interface CandleData {
-  open: number
-  high: number
-  low: number
-  close: number
+interface PricePoint {
+  price: number
   time: number
 }
 
@@ -18,97 +15,70 @@ export function FullscreenOtterDisplay() {
   // Initialize with happy state and green glow
   const [gifState, setGifState] = useState<"happy" | "sad" | "idle">("happy")
   const [previousGifState, setPreviousGifState] = useState<"happy" | "sad" | "idle" | null>(null)
-  const [candleData, setCandleData] = useState<CandleData[]>([])
-  const [currentCandle, setCurrentCandle] = useState<CandleData | null>(null)
+  const [priceHistory, setPriceHistory] = useState<PricePoint[]>([])
+  const [canChangeState, setCanChangeState] = useState(false)
   
-  // Initialize with sample candle data so chart shows immediately
+  // Wait 5 seconds before allowing state changes - show happy on initial load
   useEffect(() => {
-    if (candleData.length === 0 && currentCandle === null) {
+    const timer = setTimeout(() => {
+      setCanChangeState(true)
+    }, 5000)
+    return () => clearTimeout(timer)
+  }, [])
+  
+  // Initialize with sample price data so chart shows immediately
+  useEffect(() => {
+    if (priceHistory.length === 0) {
       const now = Date.now()
       const samplePrice = priceData.price > 0 ? priceData.price : 0.0001
-      // Create 10 sample candles for initial display
-      const samples: CandleData[] = []
-      for (let i = 0; i < 10; i++) {
-        const variation = (Math.random() - 0.5) * 0.02 // ±1% variation
+      // Create 20 sample points for initial display with a gentle upward trend
+      const samples: PricePoint[] = []
+      for (let i = 0; i < 20; i++) {
+        // Create a smooth wave-like pattern with a slight upward trend
+        const trendFactor = 1 + (i / 20) * 0.05 // 5% increase over time
+        const waveFactor = Math.sin(i / 3) * 0.015 // Gentle wave ±1.5%
+        const noiseFactor = (Math.random() - 0.5) * 0.005 // Small noise ±0.25%
         samples.push({
-          open: samplePrice * (1 + variation),
-          high: samplePrice * (1 + Math.abs(variation) + 0.01),
-          low: samplePrice * (1 - Math.abs(variation) - 0.01),
-          close: samplePrice * (1 + variation * 0.5),
-          time: now - (10 - i) * 10000,
+          price: samplePrice * trendFactor * (1 + waveFactor + noiseFactor),
+          time: now - (20 - i) * 5000,
         })
       }
-      setCandleData(samples)
-      setCurrentCandle({
-        open: samplePrice,
-        high: samplePrice,
-        low: samplePrice,
-        close: samplePrice,
-        time: now,
-      })
+      setPriceHistory(samples)
     }
-  }, [candleData.length, currentCandle, priceData.price])
+  }, [priceHistory.length, priceData.price])
 
   useEffect(() => {
     if (priceData.price > 0) {
-      // Determine GIF state based on price change
-      let newState: "happy" | "sad" | "idle" = gifState
-      if (priceData.priceChange === "up") {
-        newState = "happy"
-      } else if (priceData.priceChange === "down") {
-        newState = "sad"
-      } else if (priceData.priceChange === "same" && priceData.previousPrice > 0) {
-        newState = "sad"
-      }
-      
-      // Only update if state changed
-      if (newState !== gifState) {
-        setPreviousGifState(gifState)
-        setGifState(newState)
-        // Clear previous state after transition
-        setTimeout(() => setPreviousGifState(null), 500)
+      // Only change GIF state after initial 5-second delay
+      if (canChangeState) {
+        // Determine GIF state based on price change
+        let newState: "happy" | "sad" | "idle" = gifState
+        if (priceData.priceChange === "up") {
+          newState = "happy"
+        } else if (priceData.priceChange === "down") {
+          newState = "sad"
+        } else if (priceData.priceChange === "same" && priceData.previousPrice > 0) {
+          newState = "sad"
+        }
+        
+        // Only update if state changed
+        if (newState !== gifState) {
+          setPreviousGifState(gifState)
+          setGifState(newState)
+          // Clear previous state after transition
+          setTimeout(() => setPreviousGifState(null), 500)
+        }
       }
 
-      // Update candlestick data
+      // Update price history (always, regardless of delay)
       const now = Date.now()
-      const isPositive = priceData.priceChange === "up"
-
-      if (!currentCandle) {
-        // Start new candle
-        setCurrentCandle({
-          open: priceData.price,
-          high: priceData.price,
-          low: priceData.price,
-          close: priceData.price,
-          time: now,
-        })
-      } else {
-        // Update current candle
-        const updatedCandle: CandleData = {
-          ...currentCandle,
-          high: Math.max(currentCandle.high, priceData.price),
-          low: Math.min(currentCandle.low, priceData.price),
-          close: priceData.price,
-        }
-        setCurrentCandle(updatedCandle)
-
-        // Every 10 seconds, close the candle and start a new one
-        if (now - currentCandle.time > 10000) {
-          setCandleData((prev) => {
-            const newData = [...prev, updatedCandle]
-            return newData.slice(-30) // Keep last 30 candles
-          })
-          setCurrentCandle({
-            open: priceData.price,
-            high: priceData.price,
-            low: priceData.price,
-            close: priceData.price,
-            time: now,
-          })
-        }
-      }
+      setPriceHistory((prev) => {
+        const newHistory = [...prev, { price: priceData.price, time: now }]
+        // Keep last 30 data points for a smooth line
+        return newHistory.slice(-30)
+      })
     }
-  }, [priceData, currentCandle])
+  }, [priceData, gifState, canChangeState])
 
   // Initial state: green glow for happy
   const glowColor = gifState === "happy" 
@@ -118,8 +88,7 @@ export function FullscreenOtterDisplay() {
     : "rgba(34, 197, 94, 0.3)" // Default to green instead of gold
   
   const gifPath = `/gifs/${gifState}.gif`
-  const isPositive = priceData.priceChange === "up"
-  const allCandles = currentCandle ? [...candleData, currentCandle] : candleData
+  const isPositive = priceData.priceChange === "up" || gifState === "happy"
 
   return (
     <div className="fixed inset-0 w-full h-screen overflow-hidden">
@@ -137,24 +106,21 @@ export function FullscreenOtterDisplay() {
           boxShadow: `0 0 80px ${glowColor}, inset 0 0 80px ${glowColor}`,
         }}
       >
-        {/* Animated Candlestick Chart Background - Always Visible */}
+        {/* Animated Line Chart Background - Always Visible */}
         <div className="absolute inset-0 z-0">
-          <CandlestickChart 
-            data={allCandles.length > 0 ? allCandles : [{
-              open: priceData.price || 0.0001,
-              high: (priceData.price || 0.0001) * 1.01,
-              low: (priceData.price || 0.0001) * 0.99,
-              close: priceData.price || 0.0001,
+          <TokenLineChart 
+            data={priceHistory.length > 0 ? priceHistory : [{
+              price: priceData.price || 0.0001,
               time: Date.now(),
             }]} 
-            isPositive={isPositive || gifState === "happy"}
-            className="opacity-60"
+            isPositive={isPositive}
+            className="opacity-80"
           />
         </div>
         
-        {/* Additional subtle chart overlay for better visibility */}
-        {allCandles.length > 0 && (
-          <div className="absolute inset-0 opacity-10">
+        {/* Additional subtle grid overlay for better visibility */}
+        {priceHistory.length > 0 && (
+          <div className="absolute inset-0 opacity-5">
             <div 
               className="w-full h-full"
               style={{
