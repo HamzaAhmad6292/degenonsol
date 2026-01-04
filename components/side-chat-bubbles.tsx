@@ -16,7 +16,7 @@ interface Message {
 interface SideChatBubblesProps {
   onSentimentChange?: (sentiment: Sentiment | null) => void
   onSpeakingChange?: (isSpeaking: boolean) => void
-  currentMood: "happy" | "sad" | "idle"
+  currentMood: "happy" | "sad" | "idle" | "sad_idle"
   currentTrend: "up" | "down" | "neutral"
   currentSentiment?: Sentiment | null
 }
@@ -207,7 +207,7 @@ export function SideChatBubbles({ onSentimentChange, onSpeakingChange, currentMo
 
     // Determine mood to send to API based on FRESH sentiment
     // This ensures immediate reaction to the current message
-    let moodToSend = currentMood
+    let moodToSend: string = currentMood
     if (freshSentiment === "negative") {
       moodToSend = "angry" // Force angry mood for negative sentiment to trigger rude behavior
     } else if (freshSentiment === "positive") {
@@ -506,6 +506,18 @@ export function SideChatBubbles({ onSentimentChange, onSpeakingChange, currentMo
               <Send className="w-5 h-5" />
             )}
           </Button>
+        </motion.div>
+
+        {/* Powered by OpenSouls */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1 }}
+          className="text-center"
+        >
+          <p className="text-[10px] text-white/30 font-medium tracking-tight">
+            powered by <span className="text-white/50 font-bold">opensouls</span>
+          </p>
         </motion.div>
       </div>
     </>

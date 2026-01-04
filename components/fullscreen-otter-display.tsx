@@ -13,7 +13,7 @@ interface PricePoint {
 interface FullscreenOtterDisplayProps {
   chatSentiment?: "positive" | "negative" | "neutral" | null
   priceData: TokenPrice
-  gifState: "happy" | "sad" | "idle"
+  gifState: "happy" | "sad" | "idle" | "sad_idle"
   trend: "up" | "down" | "neutral"
   priceChangePercent: number
   selectedInterval: "m5" | "h1" | "h24"
@@ -29,7 +29,7 @@ export function FullscreenOtterDisplay({
   selectedInterval,
   onIntervalChange
 }: FullscreenOtterDisplayProps) {
-  const [previousGifState, setPreviousGifState] = useState<"happy" | "sad" | "idle" | null>(null)
+  const [previousGifState, setPreviousGifState] = useState<"happy" | "sad" | "idle" | "sad_idle" | null>(null)
   const [priceHistory, setPriceHistory] = useState<PricePoint[]>([])
   
   // Initialize price history with current price

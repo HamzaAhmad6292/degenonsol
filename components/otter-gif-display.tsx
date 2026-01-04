@@ -11,7 +11,7 @@ interface OtterGifDisplayProps {
 
 export function OtterGifDisplay({ className }: OtterGifDisplayProps) {
   const { priceData, loading } = useTokenPrice(10000)
-  const [gifState, setGifState] = useState<"happy" | "sad" | "idle">("idle")
+  const [gifState, setGifState] = useState<"happy" | "sad" | "idle" | "sad_idle">("idle")
   const [priceHistory, setPriceHistory] = useState<Array<{ time: number; price: number }>>([])
   const [selectedInterval, setSelectedInterval] = useState<"m5" | "h1" | "h24">("m5")
 
@@ -32,7 +32,7 @@ export function OtterGifDisplay({ className }: OtterGifDisplayProps) {
       if (change > 0) {
         setGifState("happy")
       } else if (change < 0) {
-        setGifState("sad")
+        setGifState("sad_idle")
       }
     }
   }, [priceData, selectedInterval])
@@ -45,7 +45,7 @@ export function OtterGifDisplay({ className }: OtterGifDisplayProps) {
 
   const glowColor = gifState === "happy" 
     ? "rgba(34, 197, 94, 0.4)" 
-    : gifState === "sad" 
+    : (gifState === "sad" || gifState === "sad_idle")
     ? "rgba(239, 68, 68, 0.4)" 
     : "rgba(212, 175, 55, 0.2)" // Gold for idle
   const gifPath = `/gifs/${gifState}.gif`
@@ -66,7 +66,7 @@ export function OtterGifDisplay({ className }: OtterGifDisplayProps) {
           background: `linear-gradient(135deg, ${
             gifState === "happy" 
               ? "rgba(34, 197, 94, 0.1)" 
-              : gifState === "sad" 
+              : (gifState === "sad" || gifState === "sad_idle")
               ? "rgba(239, 68, 68, 0.1)" 
               : "rgba(212, 175, 55, 0.05)"
           } 0%, rgba(0, 0, 0, 0.8) 100%)`,
@@ -85,7 +85,7 @@ export function OtterGifDisplay({ className }: OtterGifDisplayProps) {
                       stopColor={
                         gifState === "happy" 
                           ? "rgba(34, 197, 94, 0.3)" 
-                          : gifState === "sad" 
+                          : (gifState === "sad" || gifState === "sad_idle")
                           ? "rgba(239, 68, 68, 0.3)" 
                           : "rgba(212, 175, 55, 0.2)"
                       } 
@@ -95,7 +95,7 @@ export function OtterGifDisplay({ className }: OtterGifDisplayProps) {
                       stopColor={
                         gifState === "happy" 
                           ? "rgba(34, 197, 94, 0)" 
-                          : gifState === "sad" 
+                          : (gifState === "sad" || gifState === "sad_idle")
                           ? "rgba(239, 68, 68, 0)" 
                           : "rgba(212, 175, 55, 0)"
                       } 
@@ -108,7 +108,7 @@ export function OtterGifDisplay({ className }: OtterGifDisplayProps) {
                   stroke={
                     gifState === "happy" 
                       ? "#22c55e" 
-                      : gifState === "sad" 
+                      : (gifState === "sad" || gifState === "sad_idle")
                       ? "#ef4444" 
                       : "#d4af37"
                   }
