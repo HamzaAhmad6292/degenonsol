@@ -14,22 +14,25 @@ export async function POST(req: Request) {
     }
 
     // Map mood to speed
-    // "nova" is generally energetic and good for excited tones
-    const voice = "nova"; 
+    // Map mood to voice and speed
+    // Always use "nova" (energetic female voice)
+    const voice = "nova";
     let speed = 1.0;
 
     switch (mood) {
       case "angry":
-        speed = 1.2;
+        speed = 1.3; // Much faster for angry/rude/snappy tone
         break;
+      case "happy":
       case "excited":
-        speed = 1.15; // Slightly faster for more energy
+        speed = 1.15; // Energetic
         break;
       case "depressed":
-        speed = 0.8; 
+      case "sad":
+        speed = 0.85; // Slower for sad
         break;
       default:
-        speed = 1.05; // Default slightly faster for engagement
+        speed = 1.05; // Default slightly faster
         break;
     }
 

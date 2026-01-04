@@ -13,6 +13,7 @@ export function OtterGifDisplay({ className }: OtterGifDisplayProps) {
   const { priceData, loading } = useTokenPrice(10000)
   const [gifState, setGifState] = useState<"happy" | "sad" | "idle">("idle")
   const [priceHistory, setPriceHistory] = useState<Array<{ time: number; price: number }>>([])
+  const [selectedInterval, setSelectedInterval] = useState<"m5" | "h1" | "h24">("m5")
 
   useEffect(() => {
     if (priceData.price > 0) {
@@ -26,17 +27,15 @@ export function OtterGifDisplay({ className }: OtterGifDisplayProps) {
         return newHistory.slice(-20)
       })
 
-      // Determine GIF state based on price change
-      if (priceData.priceChange === "up") {
+      // Determine GIF state based on selected interval price change
+      const change = priceData.priceChanges?.[selectedInterval] || 0
+      if (change > 0) {
         setGifState("happy")
-      } else if (priceData.priceChange === "down") {
-        setGifState("sad")
-      } else if (priceData.priceChange === "same" && priceData.previousPrice > 0) {
-        // Only show sad if we have a previous price to compare
+      } else if (change < 0) {
         setGifState("sad")
       }
     }
-  }, [priceData])
+  }, [priceData, selectedInterval])
 
   // Generate chart data
   const chartData = priceHistory.map((point, index) => ({
@@ -159,23 +158,45 @@ export function OtterGifDisplay({ className }: OtterGifDisplayProps) {
       {/* Price Display Overlay */}
       <div className="absolute bottom-4 left-4 right-4 z-30">
         <div className="bg-black/40 backdrop-blur-md rounded-2xl p-4 border border-white/10">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-white/60 text-xs uppercase tracking-wider mb-1">$DEGEN Price</p>
-              <p className="text-white text-2xl font-bold">
-                ${priceData.price.toFixed(6)}
-              </p>
+          <div className="flex flex-col gap-4">
+            {/* Interval Selector */}
+            <div className="flex gap-2 justify-center bg-black/20 p-1 rounded-xl w-fit mx-auto">
+              {(["m5", "h1", "h24"] as const).map((interval) => (
+                <button
+                  key={interval}
+                  onClick={() => setSelectedInterval(interval)}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                    selectedInterval === interval
+                      ? "bg-white text-black shadow-lg"
+                      : "text-white/60 hover:text-white hover:bg-white/10"
+                  }`}
+                >
+                  {interval === "m5" ? "5M" : interval === "h1" ? "1H" : "24H"}
+                </button>
+              ))}
             </div>
-            <div className="text-right">
-              <p className={`text-sm font-semibold ${
-                priceData.priceChange === "up" ? "text-green-400" : 
-                priceData.priceChange === "down" ? "text-red-400" : 
-                "text-white/60"
-              }`}>
-                {priceData.priceChange === "up" ? "↑" : 
-                 priceData.priceChange === "down" ? "↓" : 
-                 "→"}
-              </p>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-white/60 text-xs uppercase tracking-wider mb-1">$DEGEN Price</p>
+                <p className="text-white text-2xl font-bold">
+                  ${priceData.price.toFixed(8)}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-white/60 text-xs uppercase tracking-wider mb-1">
+                  {selectedInterval === "m5" ? "5M" : selectedInterval === "h1" ? "1H" : "24H"} Change
+                </p>
+                <p className={`text-sm font-semibold ${
+                  (priceData.priceChanges?.[selectedInterval] || 0) > 0 ? "text-green-400" : 
+                  (priceData.priceChanges?.[selectedInterval] || 0) < 0 ? "text-red-400" : 
+                  "text-white/60"
+                }`}>
+                  {(priceData.priceChanges?.[selectedInterval] || 0) > 0 ? "↑" : 
+                   (priceData.priceChanges?.[selectedInterval] || 0) < 0 ? "↓" : 
+                   "→"} {Math.abs(priceData.priceChanges?.[selectedInterval] || 0).toFixed(2)}%
+                </p>
+              </div>
             </div>
           </div>
         </div>

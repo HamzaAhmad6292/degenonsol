@@ -13,19 +13,21 @@ interface PricePoint {
 interface FullscreenOtterDisplayProps {
   chatSentiment?: "positive" | "negative" | "neutral" | null
   priceData: TokenPrice
-  basePrice: number
   gifState: "happy" | "sad" | "idle"
   trend: "up" | "down" | "neutral"
   priceChangePercent: number
+  selectedInterval: "m5" | "h1" | "h24"
+  onIntervalChange: (interval: "m5" | "h1" | "h24") => void
 }
 
 export function FullscreenOtterDisplay({ 
   chatSentiment = null,
   priceData,
-  basePrice,
   gifState,
   trend,
-  priceChangePercent
+  priceChangePercent,
+  selectedInterval,
+  onIntervalChange
 }: FullscreenOtterDisplayProps) {
   const [previousGifState, setPreviousGifState] = useState<"happy" | "sad" | "idle" | null>(null)
   const [priceHistory, setPriceHistory] = useState<PricePoint[]>([])
@@ -170,6 +172,23 @@ export function FullscreenOtterDisplay({
           animate={{ opacity: 1, x: 0 }}
           className="bg-black/40 backdrop-blur-md rounded-2xl p-2 md:p-4 border border-white/10 shadow-lg"
         >
+          {/* Interval Selector */}
+          <div className="flex gap-1 justify-center bg-black/20 p-1 rounded-xl mb-2 md:mb-3">
+            {(["m5", "h1", "h24"] as const).map((interval) => (
+              <button
+                key={interval}
+                onClick={() => onIntervalChange(interval)}
+                className={`px-2 py-0.5 md:px-3 md:py-1 rounded-lg text-[10px] md:text-xs font-bold transition-all ${
+                  selectedInterval === interval
+                    ? "bg-white text-black shadow-lg"
+                    : "text-white/60 hover:text-white hover:bg-white/10"
+                }`}
+              >
+                {interval === "m5" ? "5M" : interval === "h1" ? "1H" : "24H"}
+              </button>
+            ))}
+          </div>
+
           <div className="flex items-center gap-2 md:gap-4">
             <div>
               <p className="text-white/60 text-[8px] md:text-xs uppercase tracking-wider mb-0.5">$DEGEN</p>
@@ -178,14 +197,17 @@ export function FullscreenOtterDisplay({
               </p>
             </div>
             <div className="text-right">
+              <p className="text-white/60 text-[8px] md:text-xs uppercase tracking-wider mb-0.5">
+                {selectedInterval === "m5" ? "5M" : selectedInterval === "h1" ? "1H" : "24H"}
+              </p>
               <p className={`text-xs md:text-lg font-semibold ${
-                priceData.priceChange === "up" ? "text-green-400" : 
-                priceData.priceChange === "down" ? "text-red-400" : 
+                (priceData.priceChanges?.[selectedInterval] || 0) > 0 ? "text-green-400" : 
+                (priceData.priceChanges?.[selectedInterval] || 0) < 0 ? "text-red-400" : 
                 "text-white/60"
               }`}>
-                {priceData.priceChange === "up" ? "↑" : 
-                 priceData.priceChange === "down" ? "↓" : 
-                 "→"}
+                {(priceData.priceChanges?.[selectedInterval] || 0) > 0 ? "↑" : 
+                 (priceData.priceChanges?.[selectedInterval] || 0) < 0 ? "↓" : 
+                 "→"} {Math.abs(priceData.priceChanges?.[selectedInterval] || 0).toFixed(2)}%
               </p>
             </div>
           </div>

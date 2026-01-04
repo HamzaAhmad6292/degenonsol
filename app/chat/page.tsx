@@ -11,57 +11,54 @@ import { useTokenPrice } from "@/components/token-price-fetcher"
 
 export default function ChatPage() {
   const [chatSentiment, setChatSentiment] = useState<Sentiment | null>(null)
+  const [isSpeaking, setIsSpeaking] = useState(false)
   
   // Lifted state for price and mood
-  const { priceData } = useTokenPrice(10000)
-  const [basePrice, setBasePrice] = useState<number>(0)
+  const { priceData } = useTokenPrice(5000)
   const [gifState, setGifState] = useState<"happy" | "sad" | "idle">("idle")
-  
-  // Set base price on first load
-  useEffect(() => {
-    if (priceData.price > 0 && basePrice === 0) {
-      setBasePrice(priceData.price)
-    }
-  }, [priceData.price, basePrice])
+  const [selectedInterval, setSelectedInterval] = useState<"m5" | "h1" | "h24">("m5")
 
-  // Calculate price change and mood
-  const priceChangePercent = basePrice > 0 
-    ? ((priceData.price - basePrice) / basePrice) * 100 
-    : 0
-  const priceThreshold = 0.1 // 0.1% threshold
+  // Get the rate of change for the selected interval
+  const intervalChange = priceData.priceChanges?.[selectedInterval] || 0
 
-  const trend = priceChangePercent >= priceThreshold
+  // Determine trend based on selected interval
+  const trend = intervalChange > 0
     ? "up"
-    : priceChangePercent <= -priceThreshold
+    : intervalChange < 0
     ? "down"
     : "neutral"
 
+  // Determine if we're in an "angry" state (negative sentiment OR negative price)
+  const isAngry = chatSentiment === "negative" || intervalChange < 0
+
   useEffect(() => {
-    if (priceData.price > 0 && basePrice > 0) {
+    if (priceData.price > 0) {
       let newState: "happy" | "sad" | "idle" = gifState
       
-      // Priority 1: Chat sentiment
-      if (chatSentiment === "positive") {
-        newState = "happy"
-      } else if (chatSentiment === "negative") {
+      // If angry (negative sentiment or price down) → always sad
+      if (isAngry) {
         newState = "sad"
       }
-      // Priority 2: Price movement
-      else if (chatSentiment === "neutral" || chatSentiment === null) {
-        if (priceChangePercent >= priceThreshold) {
+      // If happy/positive state
+      else if (chatSentiment === "positive" || intervalChange > 0) {
+        // If speaking → happy GIF
+        if (isSpeaking) {
           newState = "happy"
-        } else if (priceChangePercent <= -priceThreshold) {
-          newState = "sad"
         } else {
+          // Not speaking → idle GIF
           newState = "idle"
         }
+      }
+      // Neutral state
+      else {
+        newState = isSpeaking ? "happy" : "idle"
       }
       
       if (newState !== gifState) {
         setGifState(newState)
       }
     }
-  }, [priceData, basePrice, chatSentiment, gifState, priceChangePercent, priceThreshold])
+  }, [priceData, chatSentiment, gifState, intervalChange, selectedInterval, isSpeaking, isAngry])
 
   return (
     <main className="fixed inset-0 w-full h-screen overflow-hidden bg-black">
@@ -69,10 +66,11 @@ export default function ChatPage() {
       <FullscreenOtterDisplay 
         chatSentiment={chatSentiment}
         priceData={priceData}
-        basePrice={basePrice}
         gifState={gifState}
         trend={trend}
-        priceChangePercent={priceChangePercent}
+        priceChangePercent={intervalChange}
+        selectedInterval={selectedInterval}
+        onIntervalChange={setSelectedInterval}
       />
 
       {/* Navigation Back Button */}
@@ -92,7 +90,8 @@ export default function ChatPage() {
 
       {/* Side Chat Bubbles - Left and Right of GIF with Input at Bottom */}
       <SideChatBubbles 
-        onSentimentChange={setChatSentiment} 
+        onSentimentChange={setChatSentiment}
+        onSpeakingChange={setIsSpeaking}
         currentMood={gifState}
         currentTrend={trend}
         currentSentiment={chatSentiment}

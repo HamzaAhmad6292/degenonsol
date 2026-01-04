@@ -15,6 +15,7 @@ interface Message {
 
 interface SideChatBubblesProps {
   onSentimentChange?: (sentiment: Sentiment | null) => void
+  onSpeakingChange?: (isSpeaking: boolean) => void
   currentMood: "happy" | "sad" | "idle"
   currentTrend: "up" | "down" | "neutral"
   currentSentiment?: Sentiment | null
@@ -28,7 +29,7 @@ declare global {
   }
 }
 
-export function SideChatBubbles({ onSentimentChange, currentMood, currentTrend, currentSentiment }: SideChatBubblesProps) {
+export function SideChatBubbles({ onSentimentChange, onSpeakingChange, currentMood, currentTrend, currentSentiment }: SideChatBubblesProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -82,13 +83,23 @@ export function SideChatBubbles({ onSentimentChange, currentMood, currentTrend, 
       const url = URL.createObjectURL(blob)
       const audio = new Audio(url)
       
+      // Notify parent that speaking has started
+      onSpeakingChange?.(true)
+      
       audio.onended = () => {
         URL.revokeObjectURL(url)
+        // Notify parent that speaking has ended
+        onSpeakingChange?.(false)
+      }
+      
+      audio.onerror = () => {
+        onSpeakingChange?.(false)
       }
       
       await audio.play()
     } catch (error) {
       console.error("TTS Error:", error)
+      onSpeakingChange?.(false)
     }
   }
 
@@ -248,10 +259,8 @@ export function SideChatBubbles({ onSentimentChange, currentMood, currentTrend, 
         setMessages((prev) => [...prev, assistantMessage])
         setIsLoading(false)
         
-        // Only speak if the message originated from voice input
-        if (origin === "voice") {
-          speakText(data.response, "neutral")
-        }
+        // Speak the response (TTS)
+        speakText(data.response, moodToSend)
       }
     } catch (error) {
       const errorMessage: Message = {
