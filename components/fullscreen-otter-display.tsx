@@ -166,19 +166,19 @@ export function FullscreenOtterDisplay({
       </div>
 
       {/* Price Display - Top Right */}
-      <div className="absolute top-4 right-4 md:top-6 md:right-6 z-20">
+      <div className="absolute top-14 right-2 md:top-6 md:right-6 z-20">
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          className="bg-black/40 backdrop-blur-md rounded-2xl p-2 md:p-4 border border-white/10 shadow-lg"
+          className="bg-black/50 backdrop-blur-md rounded-xl md:rounded-2xl p-2.5 md:p-4 border border-white/10 shadow-xl"
         >
           {/* Interval Selector */}
-          <div className="flex gap-1 justify-center bg-black/20 p-1 rounded-xl mb-2 md:mb-3">
+          <div className="flex gap-0.5 md:gap-1 justify-center bg-black/30 p-0.5 md:p-1 rounded-lg md:rounded-xl mb-2 md:mb-3">
             {(["m5", "h1", "h24"] as const).map((interval) => (
               <button
                 key={interval}
                 onClick={() => onIntervalChange(interval)}
-                className={`px-2 py-0.5 md:px-3 md:py-1 rounded-lg text-[10px] md:text-xs font-bold transition-all ${
+                className={`px-2.5 py-1 md:px-3 md:py-1.5 rounded-md md:rounded-lg text-[11px] md:text-xs font-bold transition-all ${
                   selectedInterval === interval
                     ? "bg-white text-black shadow-lg"
                     : "text-white/60 hover:text-white hover:bg-white/10"
@@ -189,18 +189,18 @@ export function FullscreenOtterDisplay({
             ))}
           </div>
 
-          <div className="flex items-center gap-2 md:gap-4">
+          <div className="flex items-center gap-3 md:gap-4">
             <div>
-              <p className="text-white/60 text-[8px] md:text-xs uppercase tracking-wider mb-0.5">$DEGEN</p>
-              <p className="text-white text-sm md:text-2xl font-bold">
+              <p className="text-white/60 text-[9px] md:text-xs uppercase tracking-wider mb-0.5">$DEGEN</p>
+              <p className="text-white text-base md:text-2xl font-bold">
                 ${priceData.price > 0 ? priceData.price.toFixed(6) : "0.000000"}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-white/60 text-[8px] md:text-xs uppercase tracking-wider mb-0.5">
+              <p className="text-white/60 text-[9px] md:text-xs uppercase tracking-wider mb-0.5">
                 {selectedInterval === "m5" ? "5M" : selectedInterval === "h1" ? "1H" : "24H"}
               </p>
-              <p className={`text-xs md:text-lg font-semibold ${
+              <p className={`text-sm md:text-lg font-semibold ${
                 (priceData.priceChanges?.[selectedInterval] || 0) > 0 ? "text-green-400" : 
                 (priceData.priceChanges?.[selectedInterval] || 0) < 0 ? "text-red-400" : 
                 "text-white/60"

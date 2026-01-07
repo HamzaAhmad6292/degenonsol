@@ -1,58 +1,82 @@
-import { OpenAI } from "openai";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server"
+import { 
+  getOtterExpression, 
+  addOtterExpression, 
+  MODELS,
+  DEFAULT_VOICE_ID 
+} from "@/lib/elevenlabs"
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY
 
-export async function POST(req: Request) {
+/**
+ * ElevenLabs TTS with Audio Tags (Non-streaming)
+ * 
+ * For lower latency, use /api/tts/stream instead.
+ * This returns the complete audio file.
+ */
+export async function POST(req: NextRequest) {
   try {
-    const { text, mood } = await req.json();
+    const { text, mood = 'neutral' } = await req.json()
 
     if (!text) {
-      return NextResponse.json({ error: "Text is required" }, { status: 400 });
+      return NextResponse.json({ error: "Text is required" }, { status: 400 })
     }
 
-    // Map mood to speed
-    // Map mood to voice and speed
-    // Always use "nova" (energetic female voice)
-    const voice = "nova";
-    let speed = 1.0;
-
-    switch (mood) {
-      case "angry":
-        speed = 1.3; // Much faster for angry/rude/snappy tone
-        break;
-      case "happy":
-      case "excited":
-        speed = 1.15; // Energetic
-        break;
-      case "depressed":
-      case "sad":
-        speed = 0.85; // Slower for sad
-        break;
-      default:
-        speed = 1.05; // Default slightly faster
-        break;
+    if (!ELEVENLABS_API_KEY) {
+      return NextResponse.json(
+        { error: "ELEVENLABS_API_KEY not configured" },
+        { status: 500 }
+      )
     }
 
-    const mp3 = await openai.audio.speech.create({
-      model: "tts-1",
-      voice: voice,
-      input: text,
-      speed: speed,
-    });
+    // Get mood-specific voice settings
+    const { voiceSettings } = getOtterExpression(mood)
+    
+    // Add emotional expression tags
+    const expressiveText = addOtterExpression(text, mood)
 
-    const buffer = Buffer.from(await mp3.arrayBuffer());
+    const response = await fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${DEFAULT_VOICE_ID}`,
+      {
+        method: "POST",
+        headers: {
+          "Accept": "audio/mpeg",
+          "Content-Type": "application/json",
+          "xi-api-key": ELEVENLABS_API_KEY,
+        },
+        body: JSON.stringify({
+          text: expressiveText,
+          model_id: MODELS.v3,
+          voice_settings: {
+            stability: voiceSettings.stability,
+            similarity_boost: voiceSettings.similarity_boost,
+            style: voiceSettings.style ?? 0.3,
+            use_speaker_boost: voiceSettings.use_speaker_boost ?? true,
+          },
+          output_format: "mp3_44100_128",
+        }),
+      }
+    )
 
-    return new NextResponse(buffer, {
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("ElevenLabs error:", response.status, errorText)
+      throw new Error(`ElevenLabs API error: ${response.status}`)
+    }
+
+    const audioBuffer = await response.arrayBuffer()
+
+    return new NextResponse(Buffer.from(audioBuffer), {
       headers: {
         "Content-Type": "audio/mpeg",
-        "Content-Length": buffer.length.toString(),
+        "Content-Length": audioBuffer.byteLength.toString(),
       },
-    });
-  } catch (error) {
-    console.error("TTS Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    })
+  } catch (error: any) {
+    console.error("TTS Error:", error)
+    return NextResponse.json(
+      { error: error.message || "Internal Server Error" },
+      { status: 500 }
+    )
   }
 }
