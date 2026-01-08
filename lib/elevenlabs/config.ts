@@ -103,6 +103,26 @@ export function getOtterExpression(mood: string): {
         voiceSettings: naturalSettings,
       }
 
+    // === Medium intensity sad (2-3% down) ===
+    case 'sad_idle_2':
+      return {
+        primaryTag: AUDIO_TAGS.emotions.frustrated,
+        contextTags: {
+          after: AUDIO_TAGS.reactions.scoffs,
+        },
+        voiceSettings: naturalSettings,
+      }
+
+    // === High intensity sad (>3% down) ===
+    case 'sad_idle_3':
+      return {
+        primaryTag: AUDIO_TAGS.emotions.angry,
+        contextTags: {
+          after: AUDIO_TAGS.reactions.scoffs,
+        },
+        voiceSettings: creativeSettings,
+      }
+
     // === Happy/Excited moods ===
     case 'happy':
     case 'excited':
@@ -111,6 +131,26 @@ export function getOtterExpression(mood: string): {
         primaryTag: AUDIO_TAGS.emotions.excited,
         contextTags: {
           after: AUDIO_TAGS.reactions.giggles,
+        },
+        voiceSettings: creativeSettings,
+      }
+
+    // === Medium intensity happy (2-3% up) ===
+    case 'happy_idle_2':
+      return {
+        primaryTag: AUDIO_TAGS.emotions.happy,
+        contextTags: {
+          after: AUDIO_TAGS.reactions.chuckles,
+        },
+        voiceSettings: naturalSettings,
+      }
+
+    // === High intensity happy (>3% up) ===
+    case 'happy_idle_3':
+      return {
+        primaryTag: AUDIO_TAGS.emotions.excited,
+        contextTags: {
+          after: AUDIO_TAGS.reactions.laughs,
         },
         voiceSettings: creativeSettings,
       }
@@ -169,8 +209,8 @@ export function addOtterExpression(text: string, mood: string): string {
   
   // Add contextual reactions based on punctuation and mood
   if (contextTags.after) {
-    const isAngryMood = ['angry', 'annoyed', 'frustrated', 'sarcastic', 'sad', 'sad_idle', 'down'].includes(mood)
-    const isHappyMood = ['happy', 'excited', 'up', 'playful'].includes(mood)
+    const isAngryMood = ['angry', 'annoyed', 'frustrated', 'sarcastic', 'sad', 'sad_idle', 'sad_idle_2', 'sad_idle_3', 'down'].includes(mood)
+    const isHappyMood = ['happy', 'excited', 'up', 'playful', 'happy_idle_2', 'happy_idle_3'].includes(mood)
     
     if (text.includes('!') && isHappyMood) {
       // Add laughs/giggles after exclamation when happy

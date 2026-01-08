@@ -72,7 +72,7 @@ ${!isAngry && !isDepressed && !isPositiveMood ? "- Be chill and conversational."
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini", // Using a cost-effective model, can be changed to gpt-4
       messages: conversationHistory,
-      temperature: 0.9, // Higher creativity
+      temperature: 1.5, // Higher creativity
       max_tokens: 300,
     })
 

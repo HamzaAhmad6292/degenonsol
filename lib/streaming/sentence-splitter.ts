@@ -17,13 +17,14 @@ export class PhraseSplitter {
   /**
    * Add text to the buffer and return any speakable chunks
    * Returns chunks as soon as they're large enough or hit a natural break
+   * Optimized for low-latency TTS streaming
    */
   addChunk(text: string): string[] {
     this.buffer += text
     const chunks: string[] = []
 
     while (this.buffer.length > 0) {
-      // If buffer is long enough, look for a break point
+      // If buffer has enough content, look for a break point
       if (this.buffer.length >= this.minChunkLength) {
         // Look for natural break points
         const match = this.buffer.match(this.breakPatterns)
@@ -31,8 +32,8 @@ export class PhraseSplitter {
         if (match && match.index !== undefined) {
           const breakIndex = match.index + match[0].length
           
-          // Only split if the chunk is meaningful
-          if (breakIndex >= this.minChunkLength || this.buffer.length > this.maxChunkLength) {
+          // Split at break point if chunk is meaningful (lower threshold for faster TTS)
+          if (breakIndex >= Math.min(this.minChunkLength, 8) || this.buffer.length > this.maxChunkLength) {
             const chunk = this.buffer.slice(0, breakIndex).trim()
             if (chunk.length > 0) {
               chunks.push(chunk)
@@ -45,7 +46,7 @@ export class PhraseSplitter {
         // Force split if too long (find a space)
         if (this.buffer.length > this.maxChunkLength) {
           const spaceIndex = this.buffer.lastIndexOf(' ', this.maxChunkLength)
-          if (spaceIndex > this.minChunkLength) {
+          if (spaceIndex > Math.min(this.minChunkLength, 8)) {
             const chunk = this.buffer.slice(0, spaceIndex).trim()
             if (chunk.length > 0) {
               chunks.push(chunk)
@@ -98,7 +99,7 @@ export class SentenceSplitter {
     const sentences: string[] = []
 
     while (true) {
-      const match = this.buffer.match(/^(.*?[.!?]+)\s+(.*)$/s)
+      const match = this.buffer.match(/^([\s\S]*?[.!?]+)\s+([\s\S]*)$/)
       
       if (match) {
         const sentence = match[1].trim()

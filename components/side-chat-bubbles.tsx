@@ -6,13 +6,15 @@ import { Send, Loader2, Eye, EyeOff, Mic, Square, Volume2, VolumeX } from "lucid
 import { Button } from "@/components/ui/button"
 import { type Sentiment } from "@/lib/sentiment-analyzer"
 import { useStreamingChat } from "@/hooks/use-streaming-chat"
+import { type GifState } from "@/app/chat/page"
 
 interface SideChatBubblesProps {
   onSentimentChange?: (sentiment: Sentiment | null) => void
   onSpeakingChange?: (isSpeaking: boolean) => void
-  currentMood: "happy" | "sad" | "idle" | "sad_idle"
+  currentMood: GifState
   currentTrend: "up" | "down" | "neutral"
   currentSentiment?: Sentiment | null
+  onHideChat?: () => void
 }
 
 // Add type definition for Web Speech API
@@ -28,7 +30,8 @@ export function SideChatBubbles({
   onSpeakingChange, 
   currentMood, 
   currentTrend, 
-  currentSentiment 
+  currentSentiment,
+  onHideChat
 }: SideChatBubblesProps) {
   const [input, setInput] = useState("")
   const [isChatVisible, setIsChatVisible] = useState(true)
@@ -126,8 +129,15 @@ export function SideChatBubbles({
           break
         case "sad":
         case "sad_idle":
+        case "sad_idle_2":
+        case "sad_idle_3":
           // Even when GIF shows sad, voice should be frustrated/annoyed
           moodToSend = "frustrated"
+          break
+        case "happy_idle_2":
+        case "happy_idle_3":
+          // Higher intensity happy states
+          moodToSend = "excited"
           break
         case "idle":
         default:
@@ -345,7 +355,13 @@ export function SideChatBubbles({
           className="max-w-md mx-auto flex items-center gap-2 w-full"
         >
           <Button
-            onClick={() => setIsChatVisible(!isChatVisible)}
+            onClick={() => {
+              // Trigger lower50 GIF when hiding chat
+              if (isChatVisible && onHideChat) {
+                onHideChat()
+              }
+              setIsChatVisible(!isChatVisible)
+            }}
             className="bg-white/10 hover:bg-white/20 text-white rounded-xl md:rounded-2xl w-10 h-10 md:w-12 md:h-12 flex-shrink-0 flex items-center justify-center backdrop-blur-md border border-white/20 transition-all"
           >
             {isChatVisible ? (

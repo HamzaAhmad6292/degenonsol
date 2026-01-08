@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { FullscreenOtterDisplay } from "@/components/fullscreen-otter-display"
 import { SideChatBubbles } from "@/components/side-chat-bubbles"
 import { motion } from "framer-motion"
@@ -9,11 +9,36 @@ import { ArrowLeft } from "lucide-react"
 import { type Sentiment } from "@/lib/sentiment-analyzer"
 import { useTokenPrice } from "@/components/token-price-fetcher"
 
+// Extended GIF state type to include intensity levels and interactive GIFs
+export type GifState = "happy" | "sad" | "idle" | "sad_idle" | "happy_idle_2" | "happy_idle_3" | "sad_idle_2" | "sad_idle_3" | "lower50" | "upper50"
+
+// GIFs that should play only once and return to previous state
+export type OneShotGif = "lower50" | "upper50"
+
 const TikTokIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true" className="w-full h-full fill-current">
     <path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.17-2.89-.6-4.13-1.47-.76-.54-1.43-1.23-1.93-2.02V15.5c0 1.61-.46 3.23-1.53 4.43-1.14 1.32-2.86 2.1-4.58 2.06-1.93.03-3.85-.93-4.99-2.49-1.15-1.54-1.44-3.62-.81-5.39.54-1.62 1.92-2.95 3.55-3.43 1.05-.31 2.15-.32 3.23-.14V14.6c-.7-.2-1.48-.23-2.19-.06-1.02.23-1.93.94-2.34 1.91-.43 1.03-.36 2.27.24 3.2.6.93 1.64 1.51 2.73 1.48 1.14.04 2.25-.54 2.84-1.52.46-.75.65-1.64.63-2.51V.02z"></path>
   </svg>
 )
+
+// Helper function to determine idle GIF intensity based on price change percentage
+function getIdleIntensity(priceChangePercent: number, isHappy: boolean): GifState {
+  const absChange = Math.abs(priceChangePercent)
+  
+  if (absChange >= 3) {
+    // High intensity: > 3% movement
+    return isHappy ? "happy_idle_3" : "sad_idle_3"
+  } else if (absChange >= 2) {
+    // Medium intensity: 2-3% movement
+    return isHappy ? "happy_idle_2" : "sad_idle_2"
+  } else {
+    // Low intensity: < 2% movement (default idle)
+    return isHappy ? "idle" : "sad_idle"
+  }
+}
+
+// Approximate duration of one-shot GIFs in milliseconds
+const ONE_SHOT_GIF_DURATION = 2000 // Adjust based on actual GIF length
 
 export default function ChatPage() {
   const [chatSentiment, setChatSentiment] = useState<Sentiment | null>(null)
@@ -21,8 +46,12 @@ export default function ChatPage() {
   
   // Lifted state for price and mood
   const { priceData } = useTokenPrice(5000)
-  const [gifState, setGifState] = useState<"happy" | "sad" | "idle" | "sad_idle">("idle")
+  const [gifState, setGifState] = useState<GifState>("idle")
   const [selectedInterval, setSelectedInterval] = useState<"m5" | "h1" | "h24">("m5")
+  
+  // State for one-shot GIF playback
+  const [oneShotGif, setOneShotGif] = useState<OneShotGif | null>(null)
+  const [previousGifState, setPreviousGifState] = useState<GifState>("idle")
 
   // Get the rate of change for the selected interval
   const intervalChange = priceData.priceChanges?.[selectedInterval] || 0
@@ -37,14 +66,40 @@ export default function ChatPage() {
   // Determine if we're in an "angry" state (negative sentiment OR negative price)
   const isAngry = chatSentiment === "negative" || intervalChange < 0
 
+  // Handler for triggering one-shot GIFs
+  const playOneShotGif = useCallback((gif: OneShotGif) => {
+    // Don't interrupt if already playing a one-shot
+    if (oneShotGif) return
+    
+    // Store current state to return to after one-shot completes
+    setPreviousGifState(gifState)
+    setOneShotGif(gif)
+    
+    // Return to previous state after GIF plays once
+    setTimeout(() => {
+      setOneShotGif(null)
+    }, ONE_SHOT_GIF_DURATION)
+  }, [oneShotGif, gifState])
+
+  // Calculate effective GIF state (one-shot takes priority)
+  const effectiveGifState = oneShotGif || gifState
+
   useEffect(() => {
+    // Don't update base gifState while playing one-shot
+    if (oneShotGif) return
+    
     if (priceData.price > 0) {
-      let newState: "happy" | "sad" | "idle" | "sad_idle" = gifState
+      let newState: GifState = gifState
       
       // If angry (negative sentiment or price down)
       if (isAngry) {
-        // If speaking → sad GIF, otherwise sad_idle GIF
-        newState = isSpeaking ? "sad" : "sad_idle"
+        // If speaking → sad GIF, otherwise sad_idle with intensity
+        if (isSpeaking) {
+          newState = "sad"
+        } else {
+          // Use intensity based on price change when not speaking
+          newState = getIdleIntensity(intervalChange, false)
+        }
       }
       // If happy/positive state
       else if (chatSentiment === "positive" || intervalChange > 0) {
@@ -52,20 +107,25 @@ export default function ChatPage() {
         if (isSpeaking) {
           newState = "happy"
         } else {
-          // Not speaking → idle GIF
-          newState = "idle"
+          // Not speaking → idle GIF with intensity based on price change
+          newState = getIdleIntensity(intervalChange, true)
         }
       }
       // Neutral state
       else {
-        newState = isSpeaking ? "happy" : "idle"
+        if (isSpeaking) {
+          newState = "happy"
+        } else {
+          // Neutral with no movement - use default idle
+          newState = "idle"
+        }
       }
       
       if (newState !== gifState) {
         setGifState(newState)
       }
     }
-  }, [priceData, chatSentiment, gifState, intervalChange, selectedInterval, isSpeaking, isAngry])
+  }, [priceData, chatSentiment, gifState, intervalChange, selectedInterval, isSpeaking, isAngry, oneShotGif])
 
   return (
     <main className="fixed inset-0 w-full h-screen overflow-hidden bg-black">
@@ -73,11 +133,12 @@ export default function ChatPage() {
       <FullscreenOtterDisplay 
         chatSentiment={chatSentiment}
         priceData={priceData}
-        gifState={gifState}
+        gifState={effectiveGifState}
         trend={trend}
         priceChangePercent={intervalChange}
         selectedInterval={selectedInterval}
         onIntervalChange={setSelectedInterval}
+        onOtterClick={playOneShotGif}
       />
 
       {/* Navigation Back Button */}
@@ -121,6 +182,7 @@ export default function ChatPage() {
         currentMood={gifState}
         currentTrend={trend}
         currentSentiment={chatSentiment}
+        onHideChat={() => playOneShotGif("lower50")}
       />
     </main>
   )

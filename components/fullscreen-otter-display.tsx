@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import { motion } from "framer-motion"
 import { TokenLineChart } from "./token-line-chart"
 import { type TokenPrice } from "./token-price-fetcher"
+import { type GifState, type OneShotGif } from "@/app/chat/page"
 
 interface PricePoint {
   price: number
@@ -13,11 +14,12 @@ interface PricePoint {
 interface FullscreenOtterDisplayProps {
   chatSentiment?: "positive" | "negative" | "neutral" | null
   priceData: TokenPrice
-  gifState: "happy" | "sad" | "idle" | "sad_idle"
+  gifState: GifState
   trend: "up" | "down" | "neutral"
   priceChangePercent: number
   selectedInterval: "m5" | "h1" | "h24"
   onIntervalChange: (interval: "m5" | "h1" | "h24") => void
+  onOtterClick?: (gif: OneShotGif) => void
 }
 
 export function FullscreenOtterDisplay({ 
@@ -27,10 +29,12 @@ export function FullscreenOtterDisplay({
   trend,
   priceChangePercent,
   selectedInterval,
-  onIntervalChange
+  onIntervalChange,
+  onOtterClick
 }: FullscreenOtterDisplayProps) {
-  const [previousGifState, setPreviousGifState] = useState<"happy" | "sad" | "idle" | "sad_idle" | null>(null)
+  const [previousGifState, setPreviousGifState] = useState<GifState | null>(null)
   const [priceHistory, setPriceHistory] = useState<PricePoint[]>([])
+  const otterContainerRef = useRef<HTMLDivElement>(null)
   
   // Initialize price history with current price
   useEffect(() => {
@@ -65,14 +69,22 @@ export function FullscreenOtterDisplay({
     })
   }, [gifState])
   
-  // We need to track previous gifState to animate transition
-  // Let's use a ref to store the previous prop value
-  // Or just rely on the parent not changing it too fast.
-  // Actually, the previous implementation used state.
-  // Let's re-implement the transition logic using a local state that mirrors the prop but with a delay?
-  // Or just use the prop directly and maybe lose the cross-fade for a moment to simplify.
-  // The user didn't ask for cross-fade preservation specifically, but it's nice.
-  // Let's keep it simple: just render the current gifState.
+  // Handle click on otter - determine upper or lower half
+  const handleOtterClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!onOtterClick || !otterContainerRef.current) return
+    
+    const rect = otterContainerRef.current.getBoundingClientRect()
+    const clickY = e.clientY - rect.top
+    const midpoint = rect.height / 2
+    
+    if (clickY < midpoint) {
+      // Clicked on upper half
+      onOtterClick("upper50")
+    } else {
+      // Clicked on lower half
+      onOtterClick("lower50")
+    }
+  }, [onOtterClick])
   
   const glowColor = priceChangePercent >= priceThreshold
     ? "rgba(34, 197, 94, 0.5)" // Green for price increase
@@ -80,8 +92,39 @@ export function FullscreenOtterDisplay({
     ? "rgba(239, 68, 68, 0.4)" // Red for price decrease
     : "rgba(255, 255, 255, 0.3)" // White glow for idle
   
-  const gifPath = `/gifs/${gifState}.gif`
+  // Determine intensity level based on gifState
+  const intensityLevel = 
+    gifState.includes('_3') ? 3 :
+    gifState.includes('_2') ? 2 : 1
+  
+  // Determine if it's a happy or sad variant
+  const isHappyIntensity = gifState.includes('happy_idle') || gifState === 'idle'
+  const isSadIntensity = gifState.includes('sad_idle')
+  
+  // Color schemes for intensity effects
+  const intensityColors = {
+    happy: {
+      primary: 'rgba(34, 197, 94, ',      // Green
+      secondary: 'rgba(16, 185, 129, ',   // Emerald
+      accent: 'rgba(52, 211, 153, ',      // Light emerald
+    },
+    sad: {
+      primary: 'rgba(239, 68, 68, ',      // Red
+      secondary: 'rgba(220, 38, 38, ',    // Darker red
+      accent: 'rgba(248, 113, 113, ',     // Light red
+    },
+    neutral: {
+      primary: 'rgba(255, 255, 255, ',
+      secondary: 'rgba(200, 200, 200, ',
+      accent: 'rgba(180, 180, 180, ',
+    }
+  }
+  
+  const colorScheme = isSadIntensity ? intensityColors.sad : 
+                      isHappyIntensity ? intensityColors.happy : 
+                      intensityColors.neutral
 
+  const gifPath = `/gifs/${gifState}.gif`
   return (
     <div className="fixed inset-0 w-full h-screen overflow-hidden">
       {/* Background with Glow Effect */}
@@ -98,6 +141,171 @@ export function FullscreenOtterDisplay({
           boxShadow: `0 0 80px ${glowColor}, inset 0 0 80px ${glowColor}`,
         }}
       >
+        {/* === INTENSITY LEVEL 2 & 3 EFFECTS === */}
+        
+        {/* Pulsing Radial Rings - Level 2+ */}
+        {intensityLevel >= 2 && (
+          <>
+            <motion.div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background: `radial-gradient(circle at 50% 50%, transparent 30%, ${colorScheme.primary}0.08) 50%, transparent 70%)`,
+              }}
+              animate={{
+                scale: [1, 1.2, 1],
+                opacity: [0.3, 0.6, 0.3],
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+            />
+            <motion.div
+              className="absolute inset-0 pointer-events-none"
+              style={{
+                background: `radial-gradient(circle at 50% 50%, transparent 40%, ${colorScheme.secondary}0.06) 60%, transparent 80%)`,
+              }}
+              animate={{
+                scale: [1.1, 1.3, 1.1],
+                opacity: [0.2, 0.5, 0.2],
+              }}
+              transition={{
+                duration: 4,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: 0.5,
+              }}
+            />
+          </>
+        )}
+        
+        {/* Aurora Shimmer Effect - Level 2+ */}
+        {intensityLevel >= 2 && (
+          <motion.div
+            className="absolute inset-0 pointer-events-none overflow-hidden"
+            animate={{
+              opacity: [0.15, 0.25, 0.15],
+            }}
+            transition={{
+              duration: 5,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          >
+            <motion.div
+              className="absolute w-[200%] h-[200%] -left-1/2 -top-1/2"
+              style={{
+                background: `conic-gradient(from 0deg at 50% 50%, 
+                  transparent 0deg, 
+                  ${colorScheme.primary}0.1) 30deg, 
+                  transparent 60deg, 
+                  ${colorScheme.accent}0.08) 120deg, 
+                  transparent 180deg,
+                  ${colorScheme.secondary}0.1) 240deg,
+                  transparent 300deg,
+                  ${colorScheme.primary}0.08) 330deg,
+                  transparent 360deg
+                )`,
+              }}
+              animate={{
+                rotate: [0, 360],
+              }}
+              transition={{
+                duration: 20,
+                repeat: Infinity,
+                ease: "linear",
+              }}
+            />
+          </motion.div>
+        )}
+        
+        {/* === INTENSITY LEVEL 3 EXTRA EFFECTS === */}
+        
+        {/* Breathing Halo - Level 3 Only */}
+        {intensityLevel >= 3 && (
+          <>
+            <motion.div
+              className="absolute pointer-events-none"
+              style={{
+                left: '50%',
+                top: '50%',
+                width: '60vmin',
+                height: '60vmin',
+                transform: 'translate(-50%, -50%)',
+                borderRadius: '50%',
+                background: `radial-gradient(circle, ${colorScheme.primary}0.15) 0%, transparent 70%)`,
+                filter: 'blur(40px)',
+              }}
+              animate={{
+                scale: [1, 1.4, 1],
+                opacity: [0.4, 0.7, 0.4],
+              }}
+              transition={{
+                duration: 2.5,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+            />
+            {/* Secondary Halo */}
+            <motion.div
+              className="absolute pointer-events-none"
+              style={{
+                left: '50%',
+                top: '50%',
+                width: '80vmin',
+                height: '80vmin',
+                transform: 'translate(-50%, -50%)',
+                borderRadius: '50%',
+                border: `2px solid ${colorScheme.primary}0.2)`,
+                boxShadow: `0 0 30px ${colorScheme.primary}0.3), inset 0 0 30px ${colorScheme.primary}0.1)`,
+              }}
+              animate={{
+                scale: [1, 1.2, 1],
+                opacity: [0.3, 0.6, 0.3],
+              }}
+              transition={{
+                duration: 3,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: 0.3,
+              }}
+            />
+          </>
+        )}
+        
+        {/* Floating Particle Orbs - Level 3 Only */}
+        {intensityLevel >= 3 && (
+          <div className="absolute inset-0 pointer-events-none overflow-hidden">
+            {[...Array(6)].map((_, i) => (
+              <motion.div
+                key={i}
+                className="absolute rounded-full"
+                style={{
+                  width: `${15 + i * 5}px`,
+                  height: `${15 + i * 5}px`,
+                  background: `radial-gradient(circle, ${colorScheme.accent}0.4) 0%, transparent 70%)`,
+                  filter: 'blur(3px)',
+                  left: `${15 + i * 15}%`,
+                  top: `${20 + (i % 3) * 25}%`,
+                }}
+                animate={{
+                  y: [0, -30, 0],
+                  x: [0, (i % 2 === 0 ? 20 : -20), 0],
+                  opacity: [0.3, 0.6, 0.3],
+                  scale: [1, 1.2, 1],
+                }}
+                transition={{
+                  duration: 4 + i * 0.5,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                  delay: i * 0.3,
+                }}
+              />
+            ))}
+          </div>
+        )}
+        
         {/* Animated Line Chart Background - Always Visible */}
         <div className="absolute inset-0 z-0">
           <TokenLineChart 
@@ -127,18 +335,36 @@ export function FullscreenOtterDisplay({
         )}
       </div>
 
-      {/* GIF Display - Full Screen, Centered - Always Visible */}
-      <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-        <div className="relative w-full h-full flex items-center justify-center">
+      {/* GIF Display - Full Screen, Centered - Clickable */}
+      <div 
+        ref={otterContainerRef}
+        className="absolute inset-0 flex items-center justify-center z-10 cursor-pointer"
+        onClick={handleOtterClick}
+      >
+        {/* 
+          Fixed SQUARE container to match original GIF dimensions (1080x1080).
+          New GIFs are 960x1280 (taller), so we force them into a square 
+          container to match the original sizing.
+        */}
+        <div 
+          className="relative flex items-center justify-center pointer-events-none overflow-hidden"
+          style={{
+            width: "min(80vw, 80vh, 450px)",
+            height: "min(80vw, 80vh, 450px)",
+            aspectRatio: "1 / 1",
+          }}
+        >
           {/* Previous GIF - fading out */}
           {previousGifState && previousGifState !== gifState && (
             <motion.img
               key={`prev-${previousGifState}`}
               src={`/gifs/${previousGifState}.gif`}
               alt={`Otter ${previousGifState}`}
-              className="absolute w-full h-full object-contain max-w-[90vw] max-h-[90vh]"
+              className="absolute object-contain"
               style={{
                 imageRendering: "auto",
+                width: "100%",
+                height: "100%",
               }}
               initial={{ opacity: 1 }}
               animate={{ opacity: 0 }}
@@ -150,9 +376,11 @@ export function FullscreenOtterDisplay({
             key={`current-${gifState}`}
             src={gifPath}
             alt={`Otter ${gifState}`}
-            className="absolute w-full h-full object-contain max-w-[90vw] max-h-[90vh]"
+            className="absolute object-contain"
             style={{
               imageRendering: "auto",
+              width: "100%",
+              height: "100%",
             }}
             initial={{ opacity: previousGifState ? 0 : 1 }}
             animate={{ opacity: 1 }}
