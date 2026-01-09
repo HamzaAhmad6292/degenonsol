@@ -25,14 +25,14 @@ const TikTokIcon = () => (
 function getIdleIntensity(priceChangePercent: number, isHappy: boolean): GifState {
   const absChange = Math.abs(priceChangePercent)
   
-  if (absChange >= 3) {
-    // High intensity: > 3% movement
+  if (absChange >= 10) {
+    // High intensity: ≥ 10% movement
     return isHappy ? "happy_idle_3" : "sad_idle_3"
-  } else if (absChange >= 2) {
-    // Medium intensity: 2-3% movement
+  } else if (absChange >= 5) {
+    // Medium intensity: 5% to 10% movement
     return isHappy ? "happy_idle_2" : "sad_idle_2"
   } else {
-    // Low intensity: < 2% movement (default idle)
+    // Low intensity: < 5% movement (default idle)
     return isHappy ? "idle" : "sad_idle"
   }
 }

@@ -217,7 +217,7 @@ export function useStreamingChat({
     {
       id: "1",
       role: "assistant",
-      content: "Hey! I'm the $DEGEN otter! 🦦",
+      content: "Hey! I am degen the otter 🦦 powered by OpenSouls And i have 8.6M followers on tiktok.",
       timestamp: new Date(),
     },
   ])
