@@ -236,13 +236,23 @@ export const MODELS = {
 } as const
 
 /**
- * Voice for the $DEGEN Otter
- * 
- * Good young female voices for a mascot character:
- * - Aria: 9BWtsMINqrJLrRacOk9x (expressive, engaging - great for characters!)
- * - Jessica: cgSgspJ2msm6clMCkdW9 (conversational young female)
- * - Matilda: XrExE9yKIg1WjnnlVkGX (warm, young)
- * 
- * Set ELEVENLABS_VOICE_ID in your .env to customize
+ * Voice IDs for different lifecycle stages
  */
-export const DEFAULT_VOICE_ID = process.env.ELEVENLABS_VOICE_ID || '9BWtsMINqrJLrRacOk9x' // Aria - expressive young female
+export const LIFECYCLE_VOICES = {
+  adult: 'iukn3a1vSSNFmdi5NZS4',
+  baby: 'ocZQ262SsZb9RIxcQBOj',
+  old: 'eppqEXVumQ3CfdndcIBd',
+} as const
+
+/**
+ * Get the voice ID based on lifecycle stage
+ */
+export function getVoiceIdForStage(stage?: string): string {
+  if (!stage) return LIFECYCLE_VOICES.adult
+  return LIFECYCLE_VOICES[stage as keyof typeof LIFECYCLE_VOICES] || LIFECYCLE_VOICES.adult
+}
+
+/**
+ * Default voice for the $DEGEN Otter (Adult)
+ */
+export const DEFAULT_VOICE_ID = LIFECYCLE_VOICES.adult

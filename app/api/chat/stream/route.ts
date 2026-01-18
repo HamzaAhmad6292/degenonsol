@@ -10,9 +10,9 @@ const openai = new OpenAI({
 // In-memory conversation storage (in production, use a database)
 const conversations = new Map<string, Array<{ role: "user" | "assistant" | "system"; content: string }>>()
 
-// Build dynamic system prompt based on mood and trend
-function buildSystemPrompt(mood?: string, trend?: string): string {
-  if (!mood && !trend) {
+// Build dynamic system prompt based on mood, trend, and lifecycle
+function buildSystemPrompt(mood?: string, trend?: string, lifecycleStage?: string): string {
+  if (!mood && !trend && !lifecycleStage) {
     return otterSoulConfig.systemPrompt
   }
 
@@ -20,13 +20,24 @@ function buildSystemPrompt(mood?: string, trend?: string): string {
   const isDepressed = mood === "depressed"
   const isPositiveMood = ["excited", "happy"].includes(mood || "") || trend === "up"
 
+  // Age-specific personality modifiers
+  let ageModifier = ""
+  if (lifecycleStage === "baby") {
+    ageModifier = "- YOU ARE A BABY OTTER. Be extra cute, high-pitched (in spirit), and curious. Use 'goo goo', 'ga ga' occasionally or just be very innocent and playful."
+  } else if (lifecycleStage === "old") {
+    ageModifier = "- YOU ARE AN OLD OTTER. Be wise, a bit slower, maybe a bit grumpy or very calm. Use phrases like 'back in my day' or 'I've seen many cycles'."
+  }
+
   return `
 ${otterSoulConfig.systemPrompt}
 
-## Current Mood: ${(mood || 'neutral').toUpperCase()}
-## Market Trend: ${(trend || 'neutral').toUpperCase()}
+## Current State
+- **Age Stage**: ${(lifecycleStage || 'adult').toUpperCase()}
+- **Mood**: ${(mood || 'neutral').toUpperCase()}
+- **Market Trend**: ${(trend || 'neutral').toUpperCase()}
 
 CRITICAL INSTRUCTIONS:
+${ageModifier}
 ${isAngry ? `
 - YOU ARE EXTREMELY ANGRY AND PISSED OFF.
 - BE RUDE, SARCASTIC, AND DISMISSIVE.
@@ -47,7 +58,7 @@ ${!isAngry && !isDepressed && !isPositiveMood ? "- Be chill and conversational."
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, conversationId, mood, trend } = await request.json()
+    const { message, conversationId, mood, trend, lifecycleStage } = await request.json()
 
     if (!process.env.OPENAI_API_KEY) {
       return new Response(
@@ -64,8 +75,8 @@ export async function POST(request: NextRequest) {
       },
     ]
 
-    // Update system prompt with current mood/trend
-    conversationHistory[0].content = buildSystemPrompt(mood, trend)
+    // Update system prompt with current mood/trend/lifecycle
+    conversationHistory[0].content = buildSystemPrompt(mood, trend, lifecycleStage)
 
     // Add user message
     conversationHistory.push({

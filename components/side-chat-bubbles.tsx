@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { type Sentiment } from "@/lib/sentiment-analyzer"
 import { useStreamingChat } from "@/hooks/use-streaming-chat"
 import { type GifState } from "@/app/chat/page"
+import { type LifecycleInfo } from "@/lib/lifecycle"
 
 interface SideChatBubblesProps {
   onSentimentChange?: (sentiment: Sentiment | null) => void
@@ -15,6 +16,7 @@ interface SideChatBubblesProps {
   currentTrend: "up" | "down" | "neutral"
   currentSentiment?: Sentiment | null
   onHideChat?: () => void
+  lifecycle: LifecycleInfo
 }
 
 // Add type definition for Web Speech API
@@ -31,7 +33,8 @@ export function SideChatBubbles({
   currentMood, 
   currentTrend, 
   currentSentiment,
-  onHideChat
+  onHideChat,
+  lifecycle
 }: SideChatBubblesProps) {
   const [input, setInput] = useState("")
   const [isChatVisible, setIsChatVisible] = useState(true)
@@ -311,6 +314,32 @@ export function SideChatBubbles({
                   </motion.div>
                 )}
                 
+                {/* Lifecycle System Message */}
+                {!lifecycle.canInteract && lifecycle.systemMessage && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex justify-center my-8"
+                  >
+                    <div
+                      className="rounded-2xl p-4 md:p-6 max-w-[90%] text-center"
+                      style={{
+                        background: "rgba(239, 68, 68, 0.15)",
+                        backdropFilter: "blur(16px) saturate(1.5)",
+                        border: "1px solid rgba(239, 68, 68, 0.3)",
+                        boxShadow: "0 8px 32px rgba(239, 68, 68, 0.2)",
+                      }}
+                    >
+                      <p className="text-white font-bold text-lg md:text-xl mb-1">
+                        {lifecycle.systemMessage}
+                      </p>
+                      <p className="text-white/60 text-sm">
+                        {lifecycle.stage === "born" ? "Initialization in progress..." : "Resting in peace."}
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+
                 <div ref={messagesEndRef} />
               </div>
             </div>
@@ -326,6 +355,7 @@ export function SideChatBubbles({
           <Button
             onClick={() => setIsMuted(!isMuted)}
             className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-md flex-shrink-0"
+            disabled={!lifecycle.canInteract}
           >
             {isMuted ? <VolumeX className="w-3.5 h-3.5 md:w-4 md:h-4" /> : <Volume2 className="w-3.5 h-3.5 md:w-4 md:h-4" />}
           </Button>
@@ -333,9 +363,12 @@ export function SideChatBubbles({
           <Button
             onClick={toggleRecording}
             type="button"
+            disabled={!lifecycle.canInteract}
             className={`w-12 h-12 md:w-16 md:h-16 rounded-full border border-white/10 transition-all duration-200 shadow-lg flex-shrink-0 ${
               isRecording 
                 ? "bg-red-500/20 text-red-400 hover:bg-red-500/30 hover:text-red-300 border-red-500/50 animate-pulse scale-110" 
+                : !lifecycle.canInteract
+                ? "bg-white/5 text-white/20 cursor-not-allowed"
                 : "bg-white/10 text-white hover:bg-white/20 hover:text-white hover:scale-105"
             }`}
           >
@@ -381,13 +414,13 @@ export function SideChatBubbles({
                 handleSend()
               }
             }}
-            placeholder={isRecording ? "Listening..." : "Type a message..."}
-            className="flex-1 min-w-0 bg-white/10 border border-white/20 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all text-sm backdrop-blur-md"
-            disabled={isLoading}
+            placeholder={!lifecycle.canInteract ? "Interaction disabled" : isRecording ? "Listening..." : "Type a message..."}
+            className="flex-1 min-w-0 bg-white/10 border border-white/20 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all text-sm backdrop-blur-md disabled:opacity-50"
+            disabled={isLoading || !lifecycle.canInteract}
           />
           <Button
             onClick={() => handleSend()}
-            disabled={!input.trim() || isLoading}
+            disabled={!input.trim() || isLoading || !lifecycle.canInteract}
             className="bg-primary text-black hover:bg-primary/90 rounded-xl md:rounded-2xl w-10 h-10 md:w-12 md:h-12 flex-shrink-0 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/20"
           >
             {isLoading ? (

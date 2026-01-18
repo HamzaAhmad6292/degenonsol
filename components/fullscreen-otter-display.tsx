@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 import { TokenLineChart } from "./token-line-chart"
 import { type TokenPrice } from "./token-price-fetcher"
 import { type GifState, type OneShotGif } from "@/app/chat/page"
+import { type LifecycleInfo } from "@/lib/lifecycle"
 
 interface PricePoint {
   price: number
@@ -20,6 +21,7 @@ interface FullscreenOtterDisplayProps {
   selectedInterval: "m5" | "h1" | "h24"
   onIntervalChange: (interval: "m5" | "h1" | "h24") => void
   onOtterClick?: (gif: OneShotGif) => void
+  lifecycle: LifecycleInfo
 }
 
 export function FullscreenOtterDisplay({ 
@@ -30,7 +32,8 @@ export function FullscreenOtterDisplay({
   priceChangePercent,
   selectedInterval,
   onIntervalChange,
-  onOtterClick
+  onOtterClick,
+  lifecycle
 }: FullscreenOtterDisplayProps) {
   const [previousGifState, setPreviousGifState] = useState<GifState | null>(null)
   const [priceHistory, setPriceHistory] = useState<PricePoint[]>([])
@@ -60,12 +63,7 @@ export function FullscreenOtterDisplay({
   // Handle GIF transition
   useEffect(() => {
     setPreviousGifState((prev) => {
-        // If the state is changing, store the old one as previous
-        // But we need to know what the *previous* render's gifState was.
-        // Actually, we can just track it in a ref or effect.
-        // Simplified: When gifState changes, we want to animate out the old one.
-        // But here gifState is a prop.
-        return null // We'll handle this differently or keep it simple for now
+        return null 
     })
   }, [gifState])
   
@@ -124,7 +122,41 @@ export function FullscreenOtterDisplay({
                       isHappyIntensity ? intensityColors.happy : 
                       intensityColors.neutral
 
-  const gifPath = `/gifs/${gifState}.gif`
+  // Determine GIF path based on lifecycle stage
+  let gifPath = `/gifs/${gifState}.gif`
+  
+  if (lifecycle.stage === "born") {
+    gifPath = "/gifs/lifecycle/born.gif"
+  } else if (lifecycle.stage === "dead") {
+    gifPath = "/gifs/lifecycle/dead.gif"
+  } else if (lifecycle.stage === "baby" || lifecycle.stage === "old") {
+    const stage = lifecycle.stage
+    let fileName = ""
+    
+    switch (gifState) {
+      case "happy":
+        fileName = "happy-speaking.gif"
+        break
+      case "sad":
+        fileName = "sad-speaking.gif"
+        break
+      case "idle":
+        fileName = "happy-idle.gif"
+        break
+      case "sad_idle":
+        fileName = "sad-idle.gif"
+        break
+      case "slap":
+        fileName = "slap.gif"
+        break
+      default:
+        // Fallback for intensity states which shouldn't happen in baby/old
+        fileName = gifState.includes("sad") ? "sad-idle.gif" : "happy-idle.gif"
+    }
+    
+    gifPath = `/gifs/lifecycle/${stage}/${fileName}`
+  }
+
   return (
     <div className="fixed inset-0 w-full h-screen overflow-hidden">
       {/* Background with Glow Effect */}

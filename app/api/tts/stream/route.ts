@@ -3,7 +3,7 @@ import {
   getOtterExpression, 
   addOtterExpression, 
   MODELS,
-  DEFAULT_VOICE_ID 
+  getVoiceIdForStage
 } from "@/lib/elevenlabs"
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY
@@ -19,7 +19,7 @@ const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY
  */
 export async function POST(req: NextRequest) {
   try {
-    const { text, mood = 'neutral' } = await req.json()
+    const { text, mood = 'neutral', lifecycleStage } = await req.json()
 
     if (!text) {
       return new Response(
@@ -35,19 +35,22 @@ export async function POST(req: NextRequest) {
       )
     }
 
+    // Get the correct voice ID based on lifecycle stage
+    const voiceId = getVoiceIdForStage(lifecycleStage)
+
     // Get mood-specific voice settings
     const { voiceSettings } = getOtterExpression(mood)
     
     // Add emotional expression tags to the text
     const expressiveText = addOtterExpression(text, mood)
     
-    console.log(`[TTS] Mood: ${mood}`)
+    console.log(`[TTS] Mood: ${mood}, Stage: ${lifecycleStage}, Voice: ${voiceId}`)
     console.log(`[TTS] Input: "${text}"`)
     console.log(`[TTS] With tags: "${expressiveText}"`)
 
     // Call ElevenLabs streaming API with eleven_v3 model
     const response = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${DEFAULT_VOICE_ID}/stream`,
+      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`,
       {
         method: "POST",
         headers: {
@@ -79,7 +82,7 @@ export async function POST(req: NextRequest) {
       console.log("Attempting fallback to flash model...")
       
       const fallbackResponse = await fetch(
-        `https://api.elevenlabs.io/v1/text-to-speech/${DEFAULT_VOICE_ID}/stream`,
+        `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`,
         {
           method: "POST",
           headers: {

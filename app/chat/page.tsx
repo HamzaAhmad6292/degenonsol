@@ -8,12 +8,13 @@ import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { type Sentiment } from "@/lib/sentiment-analyzer"
 import { useTokenPrice } from "@/components/token-price-fetcher"
+import { getLifecycleStage, type LifecycleInfo } from "@/lib/lifecycle"
 
 // Extended GIF state type to include intensity levels and interactive GIFs
-export type GifState = "happy" | "sad" | "idle" | "sad_idle" | "happy_idle_2" | "happy_idle_3" | "sad_idle_2" | "sad_idle_3" | "lower50" | "upper50"
+export type GifState = "happy" | "sad" | "idle" | "sad_idle" | "happy_idle_2" | "happy_idle_3" | "sad_idle_2" | "sad_idle_3" | "lower50" | "upper50" | "slap"
 
 // GIFs that should play only once and return to previous state
-export type OneShotGif = "lower50" | "upper50"
+export type OneShotGif = "lower50" | "upper50" | "slap"
 
 const TikTokIcon = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true" className="w-full h-full fill-current">
@@ -43,6 +44,9 @@ const ONE_SHOT_GIF_DURATION = 2000 // Adjust based on actual GIF length
 export default function ChatPage() {
   const [chatSentiment, setChatSentiment] = useState<Sentiment | null>(null)
   const [isSpeaking, setIsSpeaking] = useState(false)
+  // Initialize with current time as start time (effectively 0 elapsed = born)
+  const [serverStartTime, setServerStartTime] = useState<number>(Date.now())
+  const [lifecycle, setLifecycle] = useState<LifecycleInfo>(getLifecycleStage(Date.now()))
   
   // Lifted state for price and mood
   const { priceData } = useTokenPrice(5000)
@@ -52,6 +56,27 @@ export default function ChatPage() {
   // State for one-shot GIF playback
   const [oneShotGif, setOneShotGif] = useState<OneShotGif | null>(null)
   const [previousGifState, setPreviousGifState] = useState<GifState>("idle")
+
+  // Fetch server start time on mount
+  useEffect(() => {
+    fetch('/api/lifecycle')
+      .then(res => res.json())
+      .then(data => {
+        if (data.startTime) {
+          setServerStartTime(data.startTime)
+          setLifecycle(getLifecycleStage(data.startTime))
+        }
+      })
+      .catch(err => console.error('Failed to fetch lifecycle info:', err))
+  }, [])
+
+  // Update lifecycle every minute based on server start time
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLifecycle(getLifecycleStage(serverStartTime))
+    }, 60000)
+    return () => clearInterval(interval)
+  }, [serverStartTime])
 
   // Get the rate of change for the selected interval
   const intervalChange = priceData.priceChanges?.[selectedInterval] || 0
@@ -98,7 +123,12 @@ export default function ChatPage() {
           newState = "sad"
         } else {
           // Use intensity based on price change when not speaking
-          newState = getIdleIntensity(intervalChange, false)
+          // Variation only for Adult
+          if (lifecycle.stage === "adult") {
+            newState = getIdleIntensity(intervalChange, false)
+          } else {
+            newState = "sad_idle"
+          }
         }
       }
       // If happy/positive state
@@ -108,7 +138,12 @@ export default function ChatPage() {
           newState = "happy"
         } else {
           // Not speaking → idle GIF with intensity based on price change
-          newState = getIdleIntensity(intervalChange, true)
+          // Variation only for Adult
+          if (lifecycle.stage === "adult") {
+            newState = getIdleIntensity(intervalChange, true)
+          } else {
+            newState = "idle"
+          }
         }
       }
       // Neutral state
@@ -125,7 +160,7 @@ export default function ChatPage() {
         setGifState(newState)
       }
     }
-  }, [priceData, chatSentiment, gifState, intervalChange, selectedInterval, isSpeaking, isAngry, oneShotGif])
+  }, [priceData, chatSentiment, gifState, intervalChange, selectedInterval, isSpeaking, isAngry, oneShotGif, lifecycle.stage])
 
   return (
     <main className="fixed inset-0 w-full h-screen overflow-hidden bg-black">
@@ -138,7 +173,16 @@ export default function ChatPage() {
         priceChangePercent={intervalChange}
         selectedInterval={selectedInterval}
         onIntervalChange={setSelectedInterval}
-        onOtterClick={playOneShotGif}
+        onOtterClick={(gif) => {
+          if (lifecycle.canInteract) {
+            if (lifecycle.stage === "baby" || lifecycle.stage === "old") {
+              playOneShotGif("slap")
+            } else {
+              playOneShotGif(gif)
+            }
+          }
+        }}
+        lifecycle={lifecycle}
       />
 
       {/* Navigation Back Button */}
@@ -183,6 +227,7 @@ export default function ChatPage() {
         currentTrend={trend}
         currentSentiment={chatSentiment}
         onHideChat={() => playOneShotGif("lower50")}
+        lifecycle={lifecycle}
       />
     </main>
   )

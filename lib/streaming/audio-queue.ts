@@ -21,15 +21,17 @@ export class AudioQueue {
   /**
    * Add audio blob to the queue and start playing if not already
    */
-  async enqueueBlob(blob: Blob): Promise<void> {
+  enqueueBlob(blob: Blob): void {
     console.log(`[AudioQueue] Enqueuing blob (${blob.size} bytes). Queue length: ${this.queue.length}, isPlaying: ${this.isPlaying}`)
     this.queue.push(blob)
     this.playNext()
   }
 
-  /**
+   /**
    * Add audio chunk to the queue (base64 encoded)
    */
+
+
   enqueue(audioBase64: string): void {
     const binaryString = atob(audioBase64)
     const bytes = new Uint8Array(binaryString.length)

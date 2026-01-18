@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from "react"
 import { AudioQueue } from "@/lib/streaming"
+import { type LifecycleInfo } from "@/lib/lifecycle"
 
 interface StreamingMessage {
   id: string
@@ -17,6 +18,7 @@ interface UseStreamingChatOptions {
   onSpeakingStart?: () => void
   onSpeakingEnd?: () => void
   isMuted?: boolean
+  lifecycle?: LifecycleInfo
 }
 
 interface UseStreamingChatReturn {
@@ -139,19 +141,27 @@ class EagerPhraseSplitter {
 class TTSPipeline {
   private audioQueue: AudioQueue
   private mood: string = "neutral"
+  private lifecycleStage: string = "adult"
   private isMuted: boolean = false
   private enabled: boolean = true
   private pendingFetches: Set<Promise<void>> = new Set()
   private abortController: AbortController | null = null
+  
+  // Sequencing logic to prevent out-of-order playback
+  private nextSequenceId: number = 0
+  private expectedSequenceId: number = 0
+  private completedBlobs: Map<number, Blob> = new Map()
+  private isFlushingQueue: boolean = false
 
   constructor(audioQueue: AudioQueue) {
     this.audioQueue = audioQueue
   }
 
-  configure(mood: string, muted: boolean, enabled: boolean) {
+  configure(mood: string, muted: boolean, enabled: boolean, lifecycleStage: string = "adult") {
     this.mood = mood
     this.isMuted = muted
     this.enabled = enabled
+    this.lifecycleStage = lifecycleStage
   }
 
   /**
@@ -161,24 +171,25 @@ class TTSPipeline {
   queuePhrase(phrase: string) {
     if (this.isMuted || !this.enabled || !phrase.trim()) return
     
-    console.log(`[TTS Pipeline] Queueing: "${phrase.slice(0, 30)}..."`)
+    const seqId = this.nextSequenceId++
+    console.log(`[TTS Pipeline] Queueing (#${seqId}): "${phrase.slice(0, 30)}..."`)
     
     // Start fetch immediately - don't await!
-    const fetchPromise = this.fetchAndQueue(phrase)
+    const fetchPromise = this.fetchAndQueue(phrase, seqId)
     this.pendingFetches.add(fetchPromise)
     fetchPromise.finally(() => this.pendingFetches.delete(fetchPromise))
   }
 
-  private async fetchAndQueue(phrase: string): Promise<void> {
+  private async fetchAndQueue(phrase: string, seqId: number): Promise<void> {
     const startTime = performance.now()
     try {
-      console.log(`[TTS Pipeline] Fetching TTS for: "${phrase.slice(0, 30)}..."`)
       const response = await fetch("/api/tts/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           text: phrase,
           mood: this.mood,
+          lifecycleStage: this.lifecycleStage,
         }),
         signal: this.abortController?.signal,
       })
@@ -186,22 +197,48 @@ class TTSPipeline {
       if (response.ok && !this.isMuted) {
         const audioBlob = await response.blob()
         const fetchTime = performance.now() - startTime
-        console.log(`[TTS Pipeline] Got audio for: "${phrase.slice(0, 20)}..." (${fetchTime.toFixed(0)}ms, ${audioBlob.size} bytes)`)
-        await this.audioQueue.enqueueBlob(audioBlob)
+        console.log(`[TTS Pipeline] Got audio for (#${seqId}): "${phrase.slice(0, 20)}..." (${fetchTime.toFixed(0)}ms)`)
+        
+        // Store blob and try to flush the queue in order
+        this.completedBlobs.set(seqId, audioBlob)
+        this.flushQueue()
       }
     } catch (error: any) {
       if (error.name !== 'AbortError') {
-        console.error("TTS fetch error:", error)
+        console.error(`TTS fetch error (#${seqId}):`, error)
       }
     }
   }
 
-  clear() {
-    if (this.abortController) {
-      this.abortController.abort()
+  /**
+   * Enqueue all available blobs that are next in the sequence
+   * Uses a lock to prevent concurrent execution
+   */
+  private flushQueue() {
+    if (this.isFlushingQueue) return
+    this.isFlushingQueue = true
+    
+    try {
+      while (this.completedBlobs.has(this.expectedSequenceId)) {
+        const blob = this.completedBlobs.get(this.expectedSequenceId)!
+        console.log(`[TTS Pipeline] Flushing (#${this.expectedSequenceId}) to audio queue`)
+        this.audioQueue.enqueueBlob(blob)
+        this.completedBlobs.delete(this.expectedSequenceId)
+        this.expectedSequenceId++
+      }
+    } finally {
+      this.isFlushingQueue = false
     }
+  }
+
+  clear() {
+    this.abortController?.abort()
     this.abortController = new AbortController()
     this.pendingFetches.clear()
+    this.nextSequenceId = 0
+    this.expectedSequenceId = 0
+    this.completedBlobs.clear()
+    this.isFlushingQueue = false
   }
 
   async waitForCompletion() {
@@ -215,6 +252,7 @@ export function useStreamingChat({
   onSpeakingStart,
   onSpeakingEnd,
   isMuted = false,
+  lifecycle,
 }: UseStreamingChatOptions): UseStreamingChatReturn {
   const [messages, setMessages] = useState<StreamingMessage[]>([
     {
@@ -272,7 +310,7 @@ export function useStreamingChat({
     // Configure TTS pipeline
     const ttsPipeline = getTTSPipeline()
     ttsPipeline.clear()
-    ttsPipeline.configure(mood || "neutral", isMuted, enableTTS)
+    ttsPipeline.configure(mood || "neutral", isMuted, enableTTS, lifecycle?.stage)
 
     // Reset phrase splitter
     phraseSplitterRef.current.reset()
@@ -299,6 +337,7 @@ export function useStreamingChat({
           conversationId,
           mood,
           trend,
+          lifecycleStage: lifecycle?.stage
         }),
         signal: abortControllerRef.current.signal,
       })
