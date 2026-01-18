@@ -116,7 +116,7 @@ export function HeroSection() {
               className="bg-[#2D6A4F] hover:bg-[#1B4332] text-white font-bold text-xl px-10 py-8 rounded-2xl shadow-[0_10px_30px_rgba(45,106,79,0.4)] hover:shadow-[0_15px_40px_rgba(45,106,79,0.6)] hover:-translate-y-1 transition-all duration-300 border border-[#52B788]/30"
             >
               <Leaf className="w-6 h-6 mr-3" />
-              Join the Jungle
+              Explore Community
             </Button>
             <Button
               size="lg"
@@ -135,8 +135,8 @@ export function HeroSection() {
             className="mb-12"
           >
             <div className="inline-flex flex-col items-center">
-              <p className="text-sm text-[#95D5B2] mb-3 font-bold uppercase tracking-widest">
-                Contract Address
+              <p className="text-[10px] text-[#95D5B2] mb-3 font-bold uppercase tracking-widest opacity-60">
+                Official Contract Address (DYOR)
               </p>
               <div className="flex items-center gap-3 bg-black/30 backdrop-blur-md border border-white/10 rounded-2xl p-3 pl-6 hover:border-[#52B788]/50 transition-all group shadow-lg">
                 <code className="text-sm md:text-base font-mono text-[#F2E9E4]/90">

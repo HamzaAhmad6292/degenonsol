@@ -45,7 +45,7 @@ export function LuxuryHero() {
               rel="noopener noreferrer"
               className="w-full sm:w-auto px-8 md:px-12 py-4 bg-primary text-black font-bold rounded-full hover:bg-primary/90 transition-all duration-300 shadow-[0_0_30px_rgba(212,175,55,0.3)] hover:scale-105 uppercase tracking-widest text-xs flex items-center justify-center"
             >
-              Buy $DEGEN
+              Explore $DEGEN
             </a>
             <a
               href="https://dexscreener.com/solana/4Nc2EhF8vqXcjHpbUevYZv9Bv4aKb4fWi7cju7c2pump"
@@ -53,7 +53,7 @@ export function LuxuryHero() {
               rel="noopener noreferrer"
               className="w-full sm:w-auto px-8 md:px-12 py-4 border border-white/20 text-white font-bold rounded-full hover:bg-white/10 transition-all duration-300 backdrop-blur-md hover:scale-105 uppercase tracking-widest text-xs flex items-center justify-center"
             >
-              View Chart
+              Market Data
             </a>
             <a
               href="/chat"
