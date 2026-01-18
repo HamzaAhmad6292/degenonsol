@@ -8,6 +8,7 @@ export class AudioQueue {
   private onPlayingStart?: () => void
   private onPlayingEnd?: () => void
   private hasStartedPlaying: boolean = false
+  private isStreamingComplete: boolean = false
 
   constructor(
     onPlayingStart?: () => void,
@@ -21,6 +22,7 @@ export class AudioQueue {
    * Add audio blob to the queue and start playing if not already
    */
   async enqueueBlob(blob: Blob): Promise<void> {
+    console.log(`[AudioQueue] Enqueuing blob (${blob.size} bytes). Queue length: ${this.queue.length}, isPlaying: ${this.isPlaying}`)
     this.queue.push(blob)
     this.playNext()
   }
@@ -44,11 +46,19 @@ export class AudioQueue {
    */
   private async playNext(): Promise<void> {
     if (this.isPlaying || this.queue.length === 0) {
+      // If queue is empty and streaming is complete, end playback
+      if (this.queue.length === 0 && this.isStreamingComplete && this.hasStartedPlaying) {
+        console.log('[AudioQueue] Queue empty and streaming complete - calling onPlayingEnd')
+        this.hasStartedPlaying = false
+        this.isStreamingComplete = false
+        this.onPlayingEnd?.()
+      }
       return
     }
 
     this.isPlaying = true
     const blob = this.queue.shift()!
+    console.log(`[AudioQueue] Playing audio chunk (${blob.size} bytes). Remaining in queue: ${this.queue.length}`)
 
     try {
       const url = URL.createObjectURL(blob)
@@ -57,22 +67,18 @@ export class AudioQueue {
       // Notify playing started (only on first chunk of a new batch)
       if (!this.hasStartedPlaying) {
         this.hasStartedPlaying = true
+        console.log('[AudioQueue] Starting playback - calling onPlayingStart')
         this.onPlayingStart?.()
       }
 
       this.currentAudio.onended = () => {
+        console.log(`[AudioQueue] Audio chunk ended. Queue length: ${this.queue.length}, streamingComplete: ${this.isStreamingComplete}`)
         URL.revokeObjectURL(url)
         this.isPlaying = false
         this.currentAudio = null
         
-        // Check if there are more chunks
-        if (this.queue.length > 0) {
-          this.playNext()
-        } else {
-          // All done
-          this.hasStartedPlaying = false
-          this.onPlayingEnd?.()
-        }
+        // Always try to play next chunk
+        this.playNext()
       }
 
       this.currentAudio.onerror = (e) => {
@@ -84,12 +90,23 @@ export class AudioQueue {
       }
 
       await this.currentAudio.play()
+      console.log('[AudioQueue] Audio.play() called successfully')
     } catch (error) {
       console.error('Audio playback error:', error)
       this.isPlaying = false
       this.currentAudio = null
       this.playNext() // Try next chunk
     }
+  }
+
+  /**
+   * Signal that all audio chunks have been queued (streaming complete)
+   */
+  finishStreaming(): void {
+    console.log('[AudioQueue] Streaming finished - marking as complete')
+    this.isStreamingComplete = true
+    // Trigger playNext to check if we should end
+    this.playNext()
   }
 
   /**
@@ -103,6 +120,7 @@ export class AudioQueue {
     }
     this.isPlaying = false
     this.hasStartedPlaying = false
+    this.isStreamingComplete = false
   }
 
   /**

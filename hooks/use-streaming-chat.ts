@@ -170,7 +170,9 @@ class TTSPipeline {
   }
 
   private async fetchAndQueue(phrase: string): Promise<void> {
+    const startTime = performance.now()
     try {
+      console.log(`[TTS Pipeline] Fetching TTS for: "${phrase.slice(0, 30)}..."`)
       const response = await fetch("/api/tts/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -183,7 +185,8 @@ class TTSPipeline {
 
       if (response.ok && !this.isMuted) {
         const audioBlob = await response.blob()
-        console.log(`[TTS Pipeline] Got audio for: "${phrase.slice(0, 20)}..."`)
+        const fetchTime = performance.now() - startTime
+        console.log(`[TTS Pipeline] Got audio for: "${phrase.slice(0, 20)}..." (${fetchTime.toFixed(0)}ms, ${audioBlob.size} bytes)`)
         await this.audioQueue.enqueueBlob(audioBlob)
       }
     } catch (error: any) {
@@ -338,6 +341,12 @@ export function useStreamingChat({
                 if (remaining) {
                   ttsPipeline.queuePhrase(remaining)
                 }
+                
+                // Wait for all TTS fetches to complete, then signal streaming is done
+                ttsPipeline.waitForCompletion().then(() => {
+                  console.log('[Streaming] All TTS fetches complete - calling finishStreaming()')
+                  getAudioQueue().finishStreaming()
+                })
               }
 
               // Add complete message

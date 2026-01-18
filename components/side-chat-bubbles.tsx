@@ -160,12 +160,10 @@ export function SideChatBubbles({
     if (isRecording) {
       recognitionRef.current?.stop()
       setIsRecording(false)
-      // Auto-send after a brief delay to allow final transcript
-      setTimeout(() => {
-        if (inputValueRef.current.trim()) {
-          handleSend(inputValueRef.current)
-        }
-      }, 500)
+      // Send immediately without delay
+      if (inputValueRef.current.trim()) {
+        handleSend(inputValueRef.current)
+      }
     } else {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
       if (!SpeechRecognition) {
@@ -294,17 +292,20 @@ export function SideChatBubbles({
                     className="flex justify-start"
                   >
                     <div
-                      className="rounded-2xl rounded-bl-none p-3"
+                      className="rounded-2xl rounded-bl-none p-4 md:p-5"
                       style={{
                         background: "rgba(255, 255, 255, 0.12)",
                         backdropFilter: "blur(16px) saturate(1.5)",
                         border: "1px solid rgba(255, 255, 255, 0.2)",
                       }}
                     >
-                      <div className="flex gap-1">
-                        <span className="w-1.5 h-1.5 bg-white/60 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                        <span className="w-1.5 h-1.5 bg-white/60 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                        <span className="w-1.5 h-1.5 bg-white/60 rounded-full animate-bounce"></span>
+                      <div className="flex items-center gap-3">
+                        <div className="flex gap-1.5">
+                          <span className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                          <span className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                          <span className="w-2 h-2 bg-primary rounded-full animate-bounce"></span>
+                        </div>
+                        <span className="text-white/60 text-sm font-medium">Otter is thinking...</span>
                       </div>
                     </div>
                   </motion.div>

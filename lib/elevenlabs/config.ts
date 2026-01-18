@@ -216,12 +216,10 @@ export function addOtterExpression(text: string, mood: string): string {
       // Add laughs/giggles after exclamation when happy
       result = result.replace(/!([^!]*)$/, `! ${contextTags.after}$1`)
     } else if (text.includes('?') && isAngryMood) {
-      // Add scoffs/snorts after questions when annoyed
+      // Add scoffs/snorts after questions when annoyed (only context where we add scoffs)
       result = result.replace(/\?([^?]*)$/, `? ${contextTags.after}$1`)
-    } else if (text.length > 40) {
-      // Add reaction at the end for longer responses
-      result = `${result} ${contextTags.after}`
     }
+    // Removed: Don't add reactions at the end of long responses to reduce scoffs
   }
   
   return result
