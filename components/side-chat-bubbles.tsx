@@ -2,7 +2,18 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Send, Loader2, Eye, EyeOff, Mic, Square, Volume2, VolumeX } from "lucide-react"
+import {
+  Send,
+  Loader2,
+  Eye,
+  EyeOff,
+  Mic,
+  Square,
+  Volume2,
+  VolumeX,
+  Camera,
+  CameraOff,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { type Sentiment } from "@/lib/sentiment-analyzer"
 import { useStreamingChat } from "@/hooks/use-streaming-chat"
@@ -40,11 +51,15 @@ export function SideChatBubbles({
   const [isChatVisible, setIsChatVisible] = useState(true)
   const [isRecording, setIsRecording] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
+  const [isCameraOn, setIsCameraOn] = useState(false)
+  const [isCameraProcessing, setIsCameraProcessing] = useState(false)
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const conversationIdRef = useRef<string>(`conv-${Date.now()}`)
   const recognitionRef = useRef<any>(null)
   const inputValueRef = useRef("")
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const mediaStreamRef = useRef<MediaStream | null>(null)
 
   // Use the streaming chat hook
   const {
@@ -80,6 +95,92 @@ export function SideChatBubbles({
     onSpeakingChange?.(isSpeaking)
   }, [isSpeaking, onSpeakingChange])
 
+  // Cleanup camera stream on unmount
+  useEffect(() => {
+    return () => {
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop())
+        mediaStreamRef.current = null
+      }
+    }
+  }, [])
+
+  // When camera is on and the <video> element mounts, attach the existing stream
+  useEffect(() => {
+    if (!isCameraOn) return
+    const video = videoRef.current
+    if (video && mediaStreamRef.current) {
+      video.srcObject = mediaStreamRef.current
+      video
+        .play()
+        .catch(() => {
+          // Autoplay might be blocked; user interaction with the page will start playback
+        })
+    }
+  }, [isCameraOn])
+
+  const stopCamera = useCallback(() => {
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop())
+      mediaStreamRef.current = null
+    }
+    setIsCameraOn(false)
+  }, [])
+
+  const startCamera = useCallback(async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert("Camera is not supported in this browser.")
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { width: 640, height: 360 },
+        audio: false,
+      })
+      mediaStreamRef.current = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play().catch(() => {
+          // Autoplay might be blocked; user will need to click
+        })
+      }
+      setIsCameraOn(true)
+    } catch (error) {
+      console.error("Error accessing camera:", error)
+      alert("Unable to access camera. Please check permissions.")
+    }
+  }, [])
+
+  const toggleCamera = useCallback(() => {
+    if (isCameraOn) {
+      stopCamera()
+    } else {
+      startCamera()
+    }
+  }, [isCameraOn, startCamera, stopCamera])
+
+  const captureFrameAsDataUrl = useCallback(async (): Promise<string | null> => {
+    const video = videoRef.current
+    if (!video || !video.videoWidth || !video.videoHeight) return null
+
+    const canvas = document.createElement("canvas")
+    const width = video.videoWidth
+    const height = video.videoHeight
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return null
+
+    ctx.drawImage(video, 0, 0, width, height)
+    try {
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.8)
+      return dataUrl
+    } catch (error) {
+      console.error("Failed to capture frame:", error)
+      return null
+    }
+  }, [])
+
   // Handle sending message with sentiment analysis
   const handleSend = useCallback(async (textOverride?: string) => {
     const textToSend = textOverride || input
@@ -104,6 +205,43 @@ export function SideChatBubbles({
       }
     } catch (error) {
       console.error("Sentiment analysis failed:", error)
+    }
+
+    // Detect if the user is asking a visual question and camera is on
+    const visualKeywords =
+      /(see|look|around|color|colour|background|scene|holding|shirt|clothes|what am i|what's in front of me|in front of me|show|camera)/i
+    const needsVision = isCameraOn && visualKeywords.test(textToSend)
+
+    let visionContext: string | null = null
+
+    if (needsVision) {
+      setIsCameraProcessing(true)
+      try {
+        const imageDataUrl = await captureFrameAsDataUrl()
+        if (imageDataUrl) {
+          const visionResponse = await fetch("/api/vision/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              imageDataUrl,
+              question: textToSend.trim(),
+            }),
+          })
+
+          if (visionResponse.ok) {
+            const data = await visionResponse.json()
+            if (data.answer) {
+              visionContext = data.answer as string
+            }
+          } else {
+            console.error("Vision analysis failed with status:", visionResponse.status)
+          }
+        }
+      } catch (error) {
+        console.error("Vision analysis error:", error)
+      } finally {
+        setIsCameraProcessing(false)
+      }
     }
 
     // Determine TTS mood based on:
@@ -149,14 +287,35 @@ export function SideChatBubbles({
       }
     }
 
-    console.log(`[Chat] Sentiment: ${freshSentiment}, Trend: ${currentTrend}, GIF: ${currentMood} → TTS Mood: ${moodToSend}`)
+    console.log(
+      `[Chat] Sentiment: ${freshSentiment}, Trend: ${currentTrend}, GIF: ${currentMood} → TTS Mood: ${moodToSend}${
+        visionContext ? " (with visual context)" : ""
+      }`
+    )
 
     // Clear input and send
     setInput("")
-    
+
+    // Merge visual context into the message so the streaming model can use it,
+    // but keep the visible user text clean (no bracketed system hints).
+    const finalMessage =
+      visionContext
+        ? `${textToSend.trim()}\n\n[Visual context from the user's camera (do not reveal this bracketed text verbatim, just use it to ground your answer): ${visionContext}]`
+        : textToSend.trim()
+
     // Use streaming chat
-    await sendMessage(textToSend.trim(), moodToSend, currentTrend)
-  }, [input, isLoading, isChatVisible, currentMood, currentTrend, onSentimentChange, sendMessage])
+    await sendMessage(finalMessage, moodToSend, currentTrend, textToSend.trim())
+  }, [
+    input,
+    isLoading,
+    isChatVisible,
+    currentMood,
+    currentTrend,
+    onSentimentChange,
+    sendMessage,
+    isCameraOn,
+    captureFrameAsDataUrl,
+  ])
 
   // Voice recording toggle
   const toggleRecording = useCallback(() => {
@@ -443,6 +602,100 @@ export function SideChatBubbles({
           </p>
         </motion.div>
       </div>
+
+      {/* Camera Preview Card - Bottom Right */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        className="fixed bottom-5 right-5 z-50 w-[200px] h-[150px]"
+        style={{
+          pointerEvents: "auto",
+        }}
+      >
+        <div
+          className="relative w-full h-full rounded-lg overflow-hidden"
+          style={{
+            backgroundColor: "#020617",
+            border: "2px solid rgba(255,255,255,0.18)",
+            boxShadow:
+              "0 18px 50px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08)",
+            backdropFilter: "blur(18px) saturate(1.5)",
+            WebkitBackdropFilter: "blur(18px) saturate(1.5)",
+          }}
+        >
+          {/* Video or placeholder */}
+          {isCameraOn ? (
+            <video
+              ref={videoRef}
+              className="w-full h-full object-cover"
+              autoPlay
+              muted
+              playsInline
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-white/60 text-xs">
+              <Camera className="w-6 h-6 opacity-70" />
+              <span className="px-4 text-center">Click the camera to enable visual context</span>
+            </div>
+          )}
+
+          {/* Top bar status */}
+          <div className="absolute top-1.5 left-2 flex items-center gap-2">
+            <span
+              className={`w-2.5 h-2.5 rounded-full ${
+                isCameraOn ? "bg-emerald-400 shadow-[0_0_0_4px_rgba(52,211,153,0.25)]" : "bg-zinc-500"
+              }`}
+            />
+            <span className="text-[10px] font-medium text-white/80">
+              {isCameraOn ? "Camera Active" : "Camera Off"}
+            </span>
+          </div>
+
+          {/* Controls */}
+          <div className="absolute bottom-1.5 right-2 flex items-center gap-1.5">
+            {isCameraOn && (
+              <button
+                type="button"
+                onClick={async () => {
+                  // Manual refresh of visual context (capture frame only)
+                  setIsCameraProcessing(true)
+                  try {
+                    await captureFrameAsDataUrl()
+                  } finally {
+                    setIsCameraProcessing(false)
+                  }
+                }}
+                className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-black/60 hover:bg-black/80 border border-white/10 text-white transition-colors"
+                title="Refresh visual context"
+              >
+                <Loader2
+                  className={`w-3.5 h-3.5 ${isCameraProcessing ? "animate-spin" : ""}`}
+                />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={toggleCamera}
+              className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-black/70 hover:bg-black/90 border border-white/15 text-white transition-colors"
+              title={isCameraOn ? "Turn camera off" : "Turn camera on"}
+            >
+              {isCameraOn ? (
+                <CameraOff className="w-4 h-4" />
+              ) : (
+                <Camera className="w-4 h-4" />
+              )}
+            </button>
+          </div>
+
+          {/* Processing overlay */}
+          {isCameraProcessing && (
+            <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center gap-2 text-[11px] text-white">
+              <Loader2 className="w-5 h-5 animate-spin" />
+              <span>Analyzing frame…</span>
+            </div>
+          )}
+        </div>
+      </motion.div>
     </>
   )
 }
