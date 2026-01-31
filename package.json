@@ -8,7 +8,8 @@
     "lint": "eslint .",
     "start": "next start",
     "websocket:dev": "tsx server/websocket-server.ts",
-    "dev:all": "concurrently \"npm run dev\" \"npm run websocket:dev\""
+    "dev:all": "concurrently \"npm run dev\" \"npm run websocket:dev\"",
+    "moltbook:register": "tsx scripts/register-moltbook.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

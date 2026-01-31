@@ -14,6 +14,10 @@ WEBSOCKET_PORT=8080
 # Client-side WebSocket Port (Optional, defaults to 8080)
 # This tells the browser which port to connect to
 NEXT_PUBLIC_WEBSOCKET_PORT=8080
+
+# Moltbook (optional — for DegenAI on Moltbook)
+# Run: pnpm run moltbook:register then add the key here and open the claim URL to tweet
+MOLTBOOK_API_KEY=
 ```
 
 ## Getting Your OpenAI API Key
