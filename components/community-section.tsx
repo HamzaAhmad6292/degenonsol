@@ -2,8 +2,11 @@
 
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { MessageCircle, Video } from "lucide-react"
+import { MessageCircle, Video, Bot } from "lucide-react"
 import { motion } from "framer-motion"
+
+const MOLTBOOK_AGENT_NAME = "DegenAI" // or DegenOtter if you used that name when registering
+const MOLTBOOK_PROFILE_URL = `https://www.moltbook.com/u/${MOLTBOOK_AGENT_NAME}`
 
 export function CommunitySection() {
   const tiktokVideos = [
@@ -16,6 +19,7 @@ export function CommunitySection() {
   const socialLinks = [
     { icon: Video, label: "TikTok", followers: "8.6M+", color: "bg-accent", handle: "@marcelldegen", url: "https://www.tiktok.com/@marcelldegen" },
     { icon: MessageCircle, label: "Twitter", followers: "45K+", color: "bg-chart-4", handle: "@degentoken", url: "https://twitter.com/degentoken" },
+    { icon: Bot, label: "Moltbook", followers: "AI agents", color: "bg-amber-600", handle: MOLTBOOK_AGENT_NAME, url: MOLTBOOK_PROFILE_URL },
   ]
 
   const containerVariants = {
@@ -87,7 +91,7 @@ export function CommunitySection() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true }}
-          className="grid md:grid-cols-2 gap-6 mb-16 max-w-4xl mx-auto"
+          className="grid md:grid-cols-3 gap-6 mb-16 max-w-5xl mx-auto"
         >
           {socialLinks.map((social, index) => (
             <motion.div key={index} variants={itemVariants}>
@@ -106,7 +110,7 @@ export function CommunitySection() {
                   className="w-full mt-4 bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
                   onClick={() => window.open(social.url, "_blank")}
                 >
-                  Follow
+                  {social.label === "Moltbook" ? "View profile" : "Follow"}
                 </Button>
               </Card>
             </motion.div>
