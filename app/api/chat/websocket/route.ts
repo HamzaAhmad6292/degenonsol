@@ -1,10 +1,14 @@
-import { NextRequest } from "next/server"
-import { WebSocketServer } from "ws"
-import { Server } from "http"
-import OpenAI from "openai"
-import { otterSoulConfig } from "@/lib/otter-soul"
+import { NextResponse } from "next/server"
 
-// This is a placeholder - Next.js doesn't natively support WebSocket in API routes
-// We'll need to create a separate WebSocket server
-// For now, this file documents the structure
-
+// Next.js API routes (Vercel serverless) don't support persistent WebSockets.
+// Use a separate WebSocket server (e.g. server/websocket-server.ts) for WS.
+export function GET() {
+  return NextResponse.json(
+    {
+      error: "WebSocket not available",
+      message:
+        "Use a dedicated WebSocket server. This endpoint is for documentation only.",
+    },
+    { status: 501 }
+  )
+}
