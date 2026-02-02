@@ -15,20 +15,31 @@ export const LIFECYCLE_ADULT: LifecycleInfo = {
 
 // Durations in milliseconds
 const HOUR = 60 * 60 * 1000
+
+// Lifecycle timing:
+// - born: 1 hour
+// - baby: 4 hours
+// - adult: 4 hours
+// - old: 4 hours
+// - dead: 1 hour
 export const STAGE_DURATIONS = {
   born: 1 * HOUR,
   baby: 4 * HOUR,
   adult: 4 * HOUR,
   old: 4 * HOUR,
-  dead: 2 * HOUR,
+  dead: 1 * HOUR,
 }
 
 export const CYCLE_DURATION = Object.values(STAGE_DURATIONS).reduce((a, b) => a + b, 0)
 
-export function getLifecycleStage(serverStartTime: number): LifecycleInfo {
-  const now = Date.now()
-  const elapsed = now - serverStartTime
-  const cyclePosition = elapsed % CYCLE_DURATION
+// Use a fixed global epoch so lifecycle is deterministic across
+// serverless invocations and deployments (good for Vercel free tier).
+// This makes the lifecycle purely a function of wall-clock time.
+const GLOBAL_EPOCH = Date.UTC(2025, 0, 1, 0, 0, 0, 0)
+
+export function getLifecycleStage(now: number = Date.now()): LifecycleInfo {
+  const elapsed = now - GLOBAL_EPOCH
+  const cyclePosition = ((elapsed % CYCLE_DURATION) + CYCLE_DURATION) % CYCLE_DURATION
 
   let accumulatedTime = 0
 

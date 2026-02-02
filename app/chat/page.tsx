@@ -45,9 +45,7 @@ const ONE_SHOT_GIF_DURATION = 2000 // Adjust based on actual GIF length
 export default function ChatPage() {
   const [chatSentiment, setChatSentiment] = useState<Sentiment | null>(null)
   const [isSpeaking, setIsSpeaking] = useState(false)
-  // Initialize with current time as start time (effectively 0 elapsed = born)
-  const [serverStartTime, setServerStartTime] = useState<number>(Date.now())
-  const [lifecycle, setLifecycle] = useState<LifecycleInfo>(getLifecycleStage(Date.now()))
+  const [lifecycle, setLifecycle] = useState<LifecycleInfo>(getLifecycleStage())
   
   // Lifted state for price and mood
   const { priceData } = useTokenPrice(5000)
@@ -94,8 +92,15 @@ export default function ChatPage() {
     const interval = setInterval(() => {
       setLifecycle(getLifecycleStage(serverStartTime))
     }, 60000)
+  // Update lifecycle every minute based on wall-clock time only.
+  // This is safe for Vercel serverless: no reliance on process.uptime
+  // or long-lived server state.
+  useEffect(() => {
+    const update = () => setLifecycle(getLifecycleStage())
+    update()
+    const interval = setInterval(update, 60_000)
     return () => clearInterval(interval)
-  }, [serverStartTime])
+  }, [])
 
   // Get the rate of change for the selected interval
   const intervalChange = priceData.priceChanges?.[selectedInterval] || 0

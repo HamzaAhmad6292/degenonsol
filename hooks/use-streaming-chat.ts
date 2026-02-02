@@ -28,7 +28,7 @@ interface UseStreamingChatReturn {
   streamingContent: string
   isLoading: boolean
   isSpeaking: boolean
-  sendMessage: (message: string, mood?: string, trend?: string) => Promise<void>
+  sendMessage: (message: string, mood?: string, trend?: string, displayMessage?: string) => Promise<void>
   clearMessages: () => void
 }
 
@@ -303,7 +303,7 @@ export function useStreamingChat({
   }, [getAudioQueue])
 
   // Send message with true streaming TTS
-  const sendMessage = useCallback(async (message: string, mood?: string, trend?: string) => {
+  const sendMessage = useCallback(async (message: string, mood?: string, trend?: string, displayMessage?: string) => {
     if (!message.trim() || isLoading) return
 
     // Cancel any ongoing stream
@@ -321,11 +321,12 @@ export function useStreamingChat({
     // Clear audio queue
     getAudioQueue().clear()
 
-    // Add user message
+    // Add user message (what the user should see in the bubble)
+    const visibleContent = (displayMessage || message).trim()
     setMessages(prev => [...prev, {
       id: Date.now().toString(),
       role: "user",
-      content: message.trim(),
+      content: visibleContent,
       timestamp: new Date(),
     }])
     setStreamingContent("")
@@ -337,6 +338,7 @@ export function useStreamingChat({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          // Full message for the model (may include extra context)
           message: message.trim(),
           conversationId,
           mood,
