@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import { FullscreenOtterDisplay } from "@/components/fullscreen-otter-display"
 import { SideChatBubbles } from "@/components/side-chat-bubbles"
+import { DraggableCamera } from "@/components/draggable-camera"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
@@ -218,6 +219,9 @@ export default function ChatPage() {
           <span className="text-xs md:text-sm font-bold tracking-tight">TikTok</span>
         </a>
       </motion.div>
+
+      {/* Draggable self-view camera (Google Meet style) - laptop & phone */}
+      <DraggableCamera />
 
       {/* Side Chat Bubbles - Left and Right of GIF with Input at Bottom */}
       <SideChatBubbles 
