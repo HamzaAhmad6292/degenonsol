@@ -6,7 +6,8 @@ import { SideChatBubbles } from "@/components/side-chat-bubbles"
 import { DraggableCamera } from "@/components/draggable-camera"
 import { motion } from "framer-motion"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Scan } from "lucide-react"
+import { ArOtterView } from "@/components/ar-otter-view"
 import { type Sentiment } from "@/lib/sentiment-analyzer"
 import { useTokenPrice } from "@/components/token-price-fetcher"
 import { getLifecycleStage, type LifecycleInfo } from "@/lib/lifecycle"
@@ -57,6 +58,7 @@ export default function ChatPage() {
   // State for one-shot GIF playback
   const [oneShotGif, setOneShotGif] = useState<OneShotGif | null>(null)
   const [previousGifState, setPreviousGifState] = useState<GifState>("idle")
+  const [arOpen, setArOpen] = useState(false)
 
   // Fetch server start time on mount
   useEffect(() => {
@@ -219,6 +221,32 @@ export default function ChatPage() {
           <span className="text-xs md:text-sm font-bold tracking-tight">TikTok</span>
         </a>
       </motion.div>
+
+      {/* AR Button - Top Right */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="fixed top-4 right-4 md:top-6 md:right-6 z-50"
+      >
+        <button
+          type="button"
+          onClick={() => setArOpen(true)}
+          className="flex items-center gap-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-full px-3 py-1.5 md:px-4 md:py-2 text-white hover:bg-white/10 transition-all duration-300"
+          aria-label="Open AR view"
+        >
+          <Scan className="w-3.5 h-3.5 md:w-4 md:h-4" />
+          <span className="text-xs md:text-sm font-medium">AR</span>
+        </button>
+      </motion.div>
+
+      {/* AR View - Full screen when open */}
+      {arOpen && (
+        <ArOtterView
+          gifState={effectiveGifState}
+          lifecycle={lifecycle}
+          onClose={() => setArOpen(false)}
+        />
+      )}
 
       {/* Draggable self-view camera (Google Meet style) - laptop & phone */}
       <DraggableCamera />

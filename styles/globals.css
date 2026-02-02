@@ -123,3 +123,20 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* AR view: Start AR button (Three.js ARButton) */
+.ar-entry-button {
+  position: absolute !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  bottom: 80px !important;
+  padding: 12px 24px !important;
+  font-size: 16px !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  color: #000 !important;
+  border: none !important;
+  border-radius: 9999px !important;
+  cursor: pointer !important;
+  font-weight: 600 !important;
+  z-index: 15 !important;
+}
