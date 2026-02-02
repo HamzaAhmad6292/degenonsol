@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(Number(searchParams.get("limit")) || 25, 50)
     const personal = searchParams.get("personal") === "1"
 
-    const result = personal
+    const result = personal 
       ? await getPersonalFeed(config, { sort, limit })
       : await getFeed(config, { sort, limit })
     return Response.json(result)

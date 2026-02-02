@@ -1,14 +1,15 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { FullscreenOtterDisplay } from "@/components/fullscreen-otter-display"
 import { SideChatBubbles } from "@/components/side-chat-bubbles"
+import { DraggableCamera } from "@/components/draggable-camera"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { type Sentiment } from "@/lib/sentiment-analyzer"
 import { useTokenPrice } from "@/components/token-price-fetcher"
-import { getLifecycleStage, type LifecycleInfo } from "@/lib/lifecycle"
+import { getLifecycleStage, type LifecycleInfo, LIFECYCLE_ADULT } from "@/lib/lifecycle"
 
 // Extended GIF state type to include intensity levels and interactive GIFs
 export type GifState = "happy" | "sad" | "idle" | "sad_idle" | "happy_idle_2" | "happy_idle_3" | "sad_idle_2" | "sad_idle_3" | "lower50" | "upper50" | "slap"
@@ -57,21 +58,39 @@ export default function ChatPage() {
   const [oneShotGif, setOneShotGif] = useState<OneShotGif | null>(null)
   const [previousGifState, setPreviousGifState] = useState<GifState>("idle")
 
-  // Fetch server start time on mount
+  // Camera visibility (lifted so bottom bar can toggle it on mobile)
+  const [isCameraVisible, setIsCameraVisible] = useState(true)
+  // Camera frame for LLM: DraggableCamera registers getter; SideChatBubbles uses it when sending
+  const getCameraFrameRef = useRef<() => Promise<string | null>>(async () => null)
+  const getCameraFrame = useCallback(() => getCameraFrameRef.current?.() ?? Promise.resolve(null), [])
+
+  // On localhost: disable lifecycle (always adult, can interact). Otherwise fetch server start time.
   useEffect(() => {
-    fetch('/api/lifecycle')
-      .then(res => res.json())
-      .then(data => {
+    if (typeof window === "undefined") return
+    const isLocalhost =
+      window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    if (isLocalhost) {
+      setLifecycle(LIFECYCLE_ADULT)
+      return
+    }
+    fetch("/api/lifecycle")
+      .then((res) => res.json())
+      .then((data) => {
         if (data.startTime) {
           setServerStartTime(data.startTime)
           setLifecycle(getLifecycleStage(data.startTime))
         }
       })
-      .catch(err => console.error('Failed to fetch lifecycle info:', err))
+      .catch((err) => console.error("Failed to fetch lifecycle info:", err))
   }, [])
 
-  // Update lifecycle every minute based on server start time
+  // Update lifecycle every minute based on server start time (skip on localhost)
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const isLocalhost =
+        window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+      if (isLocalhost) return
+    }
     const interval = setInterval(() => {
       setLifecycle(getLifecycleStage(serverStartTime))
     }, 60000)
@@ -219,6 +238,13 @@ export default function ChatPage() {
         </a>
       </motion.div>
 
+      {/* Draggable self-view camera (Google Meet style); registers getCameraFrame for LLM when on */}
+      <DraggableCamera
+        isVisible={isCameraVisible}
+        onVisibleChange={setIsCameraVisible}
+        onRegisterGetFrame={(fn) => { getCameraFrameRef.current = fn }}
+      />
+
       {/* Side Chat Bubbles - Left and Right of GIF with Input at Bottom */}
       <SideChatBubbles 
         onSentimentChange={setChatSentiment}
@@ -228,6 +254,9 @@ export default function ChatPage() {
         currentSentiment={chatSentiment}
         onHideChat={() => playOneShotGif("lower50")}
         lifecycle={lifecycle}
+        getCameraFrame={getCameraFrame}
+        isCameraVisible={isCameraVisible}
+        onCameraVisibleChange={setIsCameraVisible}
       />
     </main>
   )

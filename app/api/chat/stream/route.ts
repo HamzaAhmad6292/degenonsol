@@ -58,7 +58,7 @@ ${!isAngry && !isDepressed && !isPositiveMood ? "- Be chill and conversational."
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, conversationId, mood, trend, lifecycleStage } = await request.json()
+    const { message, conversationId, mood, trend, lifecycleStage, cameraFrame } = await request.json()
 
     if (!process.env.OPENAI_API_KEY) {
       return new Response(
@@ -75,13 +75,27 @@ export async function POST(request: NextRequest) {
       },
     ]
 
-    // Update system prompt with current mood/trend/lifecycle
-    conversationHistory[0].content = buildSystemPrompt(mood, trend, lifecycleStage)
+    // Update system prompt with current mood/trend/lifecycle (and vision hint when camera frame is sent)
+    let systemContent = buildSystemPrompt(mood, trend, lifecycleStage)
+    if (cameraFrame && typeof cameraFrame === "string") {
+      systemContent += "\n\n- The user has shared their current camera view. You may reference what you see (e.g. their expression, background) when replying if relevant."
+    }
+    conversationHistory[0].content = systemContent
 
-    // Add user message
+    // Add user message (with optional camera frame for vision)
+    const userContent: string | Array<{ type: "text" | "image_url"; text?: string; image_url?: { url: string } }> =
+      cameraFrame && typeof cameraFrame === "string"
+        ? [
+            { type: "text", text: message },
+            {
+              type: "image_url",
+              image_url: { url: `data:image/jpeg;base64,${cameraFrame}` },
+            },
+          ]
+        : message
     conversationHistory.push({
       role: "user",
-      content: message,
+      content: userContent,
     })
 
     // Create streaming response

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Send, Loader2, Eye, EyeOff, Mic, Square, Volume2, VolumeX } from "lucide-react"
+import { Send, Loader2, Eye, EyeOff, Mic, Square, Volume2, VolumeX, Video, VideoOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { type Sentiment } from "@/lib/sentiment-analyzer"
 import { useStreamingChat } from "@/hooks/use-streaming-chat"
@@ -17,6 +17,12 @@ interface SideChatBubblesProps {
   currentSentiment?: Sentiment | null
   onHideChat?: () => void
   lifecycle: LifecycleInfo
+  /** When camera is on, returns current frame as base64 JPEG for the LLM. */
+  getCameraFrame?: () => Promise<string | null>
+  /** Camera preview visible (for toggle in bottom bar on mobile). */
+  isCameraVisible?: boolean
+  /** Toggle camera preview on/off. */
+  onCameraVisibleChange?: (visible: boolean) => void
 }
 
 // Add type definition for Web Speech API
@@ -34,7 +40,10 @@ export function SideChatBubbles({
   currentTrend, 
   currentSentiment,
   onHideChat,
-  lifecycle
+  lifecycle,
+  getCameraFrame,
+  isCameraVisible = true,
+  onCameraVisibleChange,
 }: SideChatBubblesProps) {
   const [input, setInput] = useState("")
   const [isChatVisible, setIsChatVisible] = useState(true)
@@ -59,6 +68,8 @@ export function SideChatBubbles({
     onSpeakingStart: () => onSpeakingChange?.(true),
     onSpeakingEnd: () => onSpeakingChange?.(false),
     isMuted,
+    lifecycle,
+    getCameraFrame,
   })
 
   // Scroll to bottom when messages or streaming content changes
@@ -404,6 +415,23 @@ export function SideChatBubbles({
               <Eye className="w-4 h-4 md:w-5 md:h-5" />
             )}
           </Button>
+          {onCameraVisibleChange && (
+            <Button
+              onClick={() => onCameraVisibleChange(!isCameraVisible)}
+              className={`rounded-xl md:rounded-2xl w-10 h-10 md:w-12 md:h-12 flex-shrink-0 flex items-center justify-center backdrop-blur-md border transition-all ${
+                isCameraVisible
+                  ? "bg-primary/20 text-primary border-primary/30 hover:bg-primary/30"
+                  : "bg-white/10 hover:bg-white/20 text-white border-white/20"
+              }`}
+              title={isCameraVisible ? "Hide camera" : "Show camera"}
+            >
+              {isCameraVisible ? (
+                <VideoOff className="w-4 h-4 md:w-5 md:h-5" />
+              ) : (
+                <Video className="w-4 h-4 md:w-5 md:h-5" />
+              )}
+            </Button>
+          )}
           <input
             type="text"
             value={input}

@@ -7,6 +7,12 @@ export interface LifecycleInfo {
   nextStageIn?: number // ms until next stage
 }
 
+/** Use when lifecycle is disabled (e.g. localhost) - always adult, can interact */
+export const LIFECYCLE_ADULT: LifecycleInfo = {
+  stage: "adult",
+  canInteract: true,
+}
+
 // Durations in milliseconds
 const HOUR = 60 * 60 * 1000
 export const STAGE_DURATIONS = {

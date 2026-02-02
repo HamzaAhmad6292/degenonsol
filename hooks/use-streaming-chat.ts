@@ -19,6 +19,8 @@ interface UseStreamingChatOptions {
   onSpeakingEnd?: () => void
   isMuted?: boolean
   lifecycle?: LifecycleInfo
+  /** When camera is on, called before each send to attach current frame to the LLM. Return base64 JPEG or null. */
+  getCameraFrame?: () => Promise<string | null>
 }
 
 interface UseStreamingChatReturn {
@@ -253,6 +255,7 @@ export function useStreamingChat({
   onSpeakingEnd,
   isMuted = false,
   lifecycle,
+  getCameraFrame,
 }: UseStreamingChatOptions): UseStreamingChatReturn {
   const [messages, setMessages] = useState<StreamingMessage[]>([
     {
@@ -329,6 +332,7 @@ export function useStreamingChat({
     setIsLoading(true)
 
     try {
+      const cameraFrame = getCameraFrame ? await getCameraFrame() : null
       const response = await fetch("/api/chat/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -337,7 +341,8 @@ export function useStreamingChat({
           conversationId,
           mood,
           trend,
-          lifecycleStage: lifecycle?.stage
+          lifecycleStage: lifecycle?.stage,
+          ...(cameraFrame ? { cameraFrame } : {}),
         }),
         signal: abortControllerRef.current.signal,
       })
@@ -418,7 +423,7 @@ export function useStreamingChat({
     } finally {
       setIsLoading(false)
     }
-  }, [isLoading, conversationId, enableTTS, isMuted, getTTSPipeline, getAudioQueue])
+  }, [isLoading, conversationId, enableTTS, isMuted, getTTSPipeline, getAudioQueue, getCameraFrame, lifecycle?.stage])
 
   // Clear messages
   const clearMessages = useCallback(() => {
