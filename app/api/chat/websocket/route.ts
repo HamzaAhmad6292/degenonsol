@@ -8,9 +8,3 @@ import { otterSoulConfig } from "@/lib/otter-soul"
 // We'll need to create a separate WebSocket server
 // For now, this file documents the structure
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-}
-
