@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { FullscreenOtterDisplay } from "@/components/fullscreen-otter-display"
 import { SideChatBubbles } from "@/components/side-chat-bubbles"
 import { DraggableCamera } from "@/components/draggable-camera"
@@ -46,9 +46,11 @@ const ONE_SHOT_GIF_DURATION = 2000 // Adjust based on actual GIF length
 export default function ChatPage() {
   const [chatSentiment, setChatSentiment] = useState<Sentiment | null>(null)
   const [isSpeaking, setIsSpeaking] = useState(false)
-  // Start time is aligned to the client clock using server uptime
   const [serverStartTime, setServerStartTime] = useState<number>(Date.now())
   const [lifecycle, setLifecycle] = useState<LifecycleInfo>(getLifecycleStage(Date.now()))
+  // Ref keeps the cycle start time stable so the interval always uses it (avoids stuck "born" after first cycle)
+  const serverStartTimeRef = useRef<number>(Date.now())
+  serverStartTimeRef.current = serverStartTime
 
   // Lifted state for price and mood
   const { priceData } = useTokenPrice(5000)
@@ -60,30 +62,32 @@ export default function ChatPage() {
   const [previousGifState, setPreviousGifState] = useState<GifState>("idle")
   const [arOpen, setArOpen] = useState(false)
 
-  // Fetch cycle start time once on mount (same for local + Vercel; cycle advances every 30s per stage)
+  // Fetch cycle start time once on mount; store in ref so interval always uses it (cycle repeats correctly)
   useEffect(() => {
     fetch("/api/lifecycle", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         const start = typeof data.startTime === "number" ? data.startTime : Date.now()
+        serverStartTimeRef.current = start
         setServerStartTime(start)
         setLifecycle(getLifecycleStage(start))
       })
       .catch((err) => {
         console.error("Failed to fetch lifecycle info:", err)
         const fallbackStart = Date.now()
+        serverStartTimeRef.current = fallbackStart
         setServerStartTime(fallbackStart)
         setLifecycle(getLifecycleStage(fallbackStart))
       })
   }, [])
 
-  // Update lifecycle every 5s so 30s stage transitions are visible
+  // Update lifecycle every 5s; use ref so we always use the same start time (no stale closure after cycle wraps)
   useEffect(() => {
     const interval = setInterval(() => {
-      setLifecycle(getLifecycleStage(serverStartTime))
+      setLifecycle(getLifecycleStage(serverStartTimeRef.current))
     }, 5000)
     return () => clearInterval(interval)
-  }, [serverStartTime])
+  }, [])
 
   // Get the rate of change for the selected interval
   const intervalChange = priceData.priceChanges?.[selectedInterval] || 0

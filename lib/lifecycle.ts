@@ -28,7 +28,7 @@ export function getLifecycleStage(serverStartTime: number): LifecycleInfo {
 
   let accumulatedTime = 0
 
-  // Born → baby → adult → old → dead (30s each)
+  // Born → baby → adult → old → dead (10 min each)
   accumulatedTime += STAGE_DURATIONS.born
   if (cyclePosition < accumulatedTime) {
     return {
