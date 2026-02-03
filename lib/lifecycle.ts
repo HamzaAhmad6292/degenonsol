@@ -7,8 +7,8 @@ export interface LifecycleInfo {
   nextStageIn?: number // ms until next stage
 }
 
-// Stage duration: 30 seconds each so the avatar changes every 30s (local + Vercel).
-const STAGE_MS = 30 * 1000
+// Stage duration: 10 minutes each (local + Vercel).
+const STAGE_MS = 10 * 60 * 1000
 
 export const STAGE_DURATIONS = {
   born: STAGE_MS,
