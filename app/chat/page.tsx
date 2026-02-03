@@ -46,21 +46,21 @@ const ONE_SHOT_GIF_DURATION = 2000 // Adjust based on actual GIF length
 export default function ChatPage() {
   const [chatSentiment, setChatSentiment] = useState<Sentiment | null>(null)
   const [isSpeaking, setIsSpeaking] = useState(false)
-  // Initialize with current time as start time (effectively 0 elapsed = born)
+  // Start time comes from API (server process start); cycle restarts when server restarts
   const [serverStartTime, setServerStartTime] = useState<number>(Date.now())
   const [lifecycle, setLifecycle] = useState<LifecycleInfo>(getLifecycleStage(Date.now()))
-  
+
   // Lifted state for price and mood
   const { priceData } = useTokenPrice(5000)
   const [gifState, setGifState] = useState<GifState>("idle")
   const [selectedInterval, setSelectedInterval] = useState<"m5" | "h1" | "h24">("m5")
-  
+
   // State for one-shot GIF playback
   const [oneShotGif, setOneShotGif] = useState<OneShotGif | null>(null)
   const [previousGifState, setPreviousGifState] = useState<GifState>("idle")
   const [arOpen, setArOpen] = useState(false)
 
-  // Fetch server start time on mount (persisted on server so cycle survives restarts)
+  // Fetch server start time on mount (cycle restarts with server)
   useEffect(() => {
     fetch("/api/lifecycle")
       .then((res) => res.json())
@@ -72,7 +72,6 @@ export default function ChatPage() {
       })
       .catch((err) => {
         console.error("Failed to fetch lifecycle info:", err)
-        // Fallback so we're not stuck at "born": assume start was 2h ago (adult stage)
         const fallbackStart = Date.now() - 2 * 60 * 60 * 1000
         setServerStartTime(fallbackStart)
         setLifecycle(getLifecycleStage(fallbackStart))
