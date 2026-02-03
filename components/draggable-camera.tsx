@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
 import { VideoOff } from "lucide-react"
+import { registerCameraCapture, unregisterCameraCapture } from "@/lib/camera-frame"
 
 const STORAGE_KEY = "degen-camera-position"
 const DEFAULT_MARGIN = 16
@@ -55,6 +56,32 @@ export function DraggableCamera() {
     }
   })
 
+  // Single-frame capture function used by AI when sending a message
+  const captureFrame = useCallback(async (): Promise<string | null> => {
+    const video = videoRef.current
+    if (!video || video.readyState < 2) return null
+
+    const width = video.videoWidth || 640
+    const height = video.videoHeight || 480
+    if (!width || !height) return null
+
+    const canvas = document.createElement("canvas")
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return null
+
+    ctx.drawImage(video, 0, 0, width, height)
+
+    try {
+      // Use JPEG to keep payload smaller
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.7)
+      return dataUrl
+    } catch {
+      return null
+    }
+  }, [])
+
   // Request webcam
   useEffect(() => {
     let mounted = true
@@ -78,6 +105,14 @@ export function DraggableCamera() {
       streamRef.current = null
     }
   }, [])
+
+  // Register global capture function while this camera is mounted
+  useEffect(() => {
+    registerCameraCapture(captureFrame)
+    return () => {
+      unregisterCameraCapture(captureFrame)
+    }
+  }, [captureFrame])
 
   useEffect(() => {
     if (!stream || !videoRef.current) return

@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     });
 
     const sentiment = completion.choices[0]?.message?.content?.toLowerCase().trim() || "neutral";
-    
+
     // Validate output
     const validSentiments = ["positive", "negative", "neutral"];
     const finalSentiment = validSentiments.includes(sentiment) ? sentiment : "neutral";

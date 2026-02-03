@@ -12,7 +12,7 @@ const conversations = new Map<string, Array<{ role: "user" | "assistant" | "syst
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, conversationId, mood, trend } = await request.json()
+    const { message, conversationId, mood, trend, frameData } = await request.json()
 
     if (!process.env.OPENAI_API_KEY) {
       return Response.json(
@@ -29,6 +29,8 @@ export async function POST(request: NextRequest) {
       },
     ]
 
+    const hasVision = !!(frameData && typeof frameData === "string")
+
     // Update system prompt with current mood/trend if available
     if (mood && trend) {
       const isAngry = mood === "angry" || (trend === "down" && mood !== "depressed")
@@ -40,8 +42,13 @@ ${otterSoulConfig.systemPrompt}
 
 ## Current Mood: ${mood.toUpperCase()}
 ## Market Trend: ${trend.toUpperCase()}
+## Vision: ${hasVision ? "ENABLED" : "DISABLED"}
 
 CRITICAL INSTRUCTIONS:
+${hasVision ? `
+- YOU CAN SEE THE USER. If they ask about what they are doing, wearing, or looking like, use the attached image frame to answer.
+- DO NOT say "I can't see you" or "I don't have eyes" if Vision is ENABLED.
+` : ""}
 ${isAngry ? `
 - YOU ARE EXTREMELY ANGRY AND PISSED OFF.
 - BE RUDE, SARCASTIC, AND DISMISSIVE.
@@ -51,6 +58,7 @@ ${isAngry ? `
 - Be short, snappy, and annoyed. Don't be helpful - be irritated.
 - Act like they're wasting your time. Show contempt.
 - DO NOT BE NICE. DO NOT BE POLITE. BE A JERK.
+- ${hasVision ? "Even if you can see them, you can still roast their appearance or what they're doing." : "If they ask if you can see them and vision is DISABLED, mock them for thinking an AI has eyes."}
 ` : ""}
 ${isDepressed ? "- YOU ARE DEPRESSED. Be gloomy, sad, and pessimistic. Nothing matters. Life is pain." : ""}
 ${isPositiveMood ? "- BE HAPPY AND HYPED. The market is up or you are excited. Celebrate with the user. Be energetic!" : ""}
@@ -62,15 +70,28 @@ ${!isAngry && !isDepressed && !isPositiveMood ? "- Be chill and conversational."
       conversationHistory[0].content = dynamicPrompt
     }
 
-    // Add user message
-    conversationHistory.push({
-      role: "user",
-      content: message,
-    })
+    // Build user message, optionally including a single camera frame
+    if (hasVision) {
+      conversationHistory.push({
+        role: "user",
+        content: [
+          { type: "text", text: message },
+          {
+            type: "image_url",
+            image_url: { url: frameData },
+          },
+        ],
+      } as any)
+    } else {
+      conversationHistory.push({
+        role: "user",
+        content: message,
+      })
+    }
 
     // Call OpenAI API
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // Using a cost-effective model, can be changed to gpt-4
+      model: "gpt-4o-mini",
       messages: conversationHistory,
       temperature: 1.5, // Higher creativity
       max_tokens: 300,

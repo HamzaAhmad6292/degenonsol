@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react"
 import { AudioQueue } from "@/lib/streaming"
 import { type LifecycleInfo } from "@/lib/lifecycle"
+import { captureCurrentCameraFrame } from "@/lib/camera-frame"
 
 interface StreamingMessage {
   id: string
@@ -40,7 +41,7 @@ class EagerPhraseSplitter {
   private firstChunkMinWords: number = 3  // Send first chunk after just 3 words
   private normalMinLength: number = 15
   private maxLength: number = 50
-  
+
   // Natural break points
   private breakPatterns = /([.!?,:;])(\s|$)|(\\s+[-–—]\\s+)|(\n)/
 
@@ -61,7 +62,7 @@ class EagerPhraseSplitter {
       // FIRST CHUNK: Be very eager - send after just a few words
       if (this.isFirstChunk) {
         const words = this.buffer.trim().split(/\s+/)
-        
+
         // Check for punctuation in the buffer first
         const punctMatch = this.buffer.match(/[.!?,;:]/)
         if (punctMatch && punctMatch.index !== undefined && punctMatch.index > 2) {
@@ -73,7 +74,7 @@ class EagerPhraseSplitter {
             continue
           }
         }
-        
+
         // Or send after minimum words
         if (words.length >= this.firstChunkMinWords) {
           // Find a good break point (end of a word)
@@ -90,12 +91,12 @@ class EagerPhraseSplitter {
         }
         break // Wait for more content
       }
-      
+
       // SUBSEQUENT CHUNKS: Normal splitting logic
       if (this.buffer.length >= this.normalMinLength) {
         // Look for natural break points
         const match = this.buffer.match(this.breakPatterns)
-        
+
         if (match && match.index !== undefined && match.index >= 5) {
           const breakIndex = match.index + match[1]?.length || 1
           const chunk = this.buffer.slice(0, breakIndex).trim()
@@ -105,7 +106,7 @@ class EagerPhraseSplitter {
           this.buffer = this.buffer.slice(breakIndex).trimStart()
           continue
         }
-        
+
         // Force split if too long
         if (this.buffer.length > this.maxLength) {
           const spaceIndex = this.buffer.lastIndexOf(' ', this.maxLength)
@@ -119,7 +120,7 @@ class EagerPhraseSplitter {
           }
         }
       }
-      
+
       break // Not enough content yet
     }
 
@@ -146,7 +147,7 @@ class TTSPipeline {
   private enabled: boolean = true
   private pendingFetches: Set<Promise<void>> = new Set()
   private abortController: AbortController | null = null
-  
+
   // Sequencing logic to prevent out-of-order playback
   private nextSequenceId: number = 0
   private expectedSequenceId: number = 0
@@ -170,10 +171,10 @@ class TTSPipeline {
    */
   queuePhrase(phrase: string) {
     if (this.isMuted || !this.enabled || !phrase.trim()) return
-    
+
     const seqId = this.nextSequenceId++
     console.log(`[TTS Pipeline] Queueing (#${seqId}): "${phrase.slice(0, 30)}..."`)
-    
+
     // Start fetch immediately - don't await!
     const fetchPromise = this.fetchAndQueue(phrase, seqId)
     this.pendingFetches.add(fetchPromise)
@@ -198,7 +199,7 @@ class TTSPipeline {
         const audioBlob = await response.blob()
         const fetchTime = performance.now() - startTime
         console.log(`[TTS Pipeline] Got audio for (#${seqId}): "${phrase.slice(0, 20)}..." (${fetchTime.toFixed(0)}ms)`)
-        
+
         // Store blob and try to flush the queue in order
         this.completedBlobs.set(seqId, audioBlob)
         this.flushQueue()
@@ -217,7 +218,7 @@ class TTSPipeline {
   private flushQueue() {
     if (this.isFlushingQueue) return
     this.isFlushingQueue = true
-    
+
     try {
       while (this.completedBlobs.has(this.expectedSequenceId)) {
         const blob = this.completedBlobs.get(this.expectedSequenceId)!
@@ -265,7 +266,7 @@ export function useStreamingChat({
   const [streamingContent, setStreamingContent] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
-  
+
   // Refs
   const audioQueueRef = useRef<AudioQueue | null>(null)
   const ttsPipelineRef = useRef<TTSPipeline | null>(null)
@@ -318,6 +319,9 @@ export function useStreamingChat({
     // Clear audio queue
     getAudioQueue().clear()
 
+    // Capture a single camera frame (if camera is active)
+    const frameData = await captureCurrentCameraFrame()
+
     // Add user message
     setMessages(prev => [...prev, {
       id: Date.now().toString(),
@@ -337,7 +341,8 @@ export function useStreamingChat({
           conversationId,
           mood,
           trend,
-          lifecycleStage: lifecycle?.stage
+          lifecycleStage: lifecycle?.stage,
+          frameData,
         }),
         signal: abortControllerRef.current.signal,
       })
@@ -380,7 +385,7 @@ export function useStreamingChat({
                 if (remaining) {
                   ttsPipeline.queuePhrase(remaining)
                 }
-                
+
                 // Wait for all TTS fetches to complete, then signal streaming is done
                 ttsPipeline.waitForCompletion().then(() => {
                   console.log('[Streaming] All TTS fetches complete - calling finishStreaming()')

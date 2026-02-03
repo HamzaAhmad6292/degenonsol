@@ -11,8 +11,8 @@ const openai = new OpenAI({
 const conversations = new Map<string, Array<{ role: "user" | "assistant" | "system"; content: string }>>()
 
 // Build dynamic system prompt based on mood, trend, and lifecycle
-function buildSystemPrompt(mood?: string, trend?: string, lifecycleStage?: string): string {
-  if (!mood && !trend && !lifecycleStage) {
+function buildSystemPrompt(mood?: string, trend?: string, lifecycleStage?: string, hasVision: boolean = false): string {
+  if (!mood && !trend && !lifecycleStage && !hasVision) {
     return otterSoulConfig.systemPrompt
   }
 
@@ -35,9 +35,14 @@ ${otterSoulConfig.systemPrompt}
 - **Age Stage**: ${(lifecycleStage || 'adult').toUpperCase()}
 - **Mood**: ${(mood || 'neutral').toUpperCase()}
 - **Market Trend**: ${(trend || 'neutral').toUpperCase()}
+- **Vision**: ${hasVision ? "ENABLED (You can see a frame from the user's camera attached to their message)" : "DISABLED"}
 
 CRITICAL INSTRUCTIONS:
 ${ageModifier}
+${hasVision ? `
+- YOU CAN SEE THE USER. If they ask about what they are doing, wearing, or looking like, use the attached image frame to answer.
+- DO NOT say "I can't see you" or "I don't have eyes" if Vision is ENABLED.
+` : ""}
 ${isAngry ? `
 - YOU ARE EXTREMELY ANGRY AND PISSED OFF.
 - BE RUDE, SARCASTIC, AND DISMISSIVE.
@@ -47,6 +52,7 @@ ${isAngry ? `
 - Be short, snappy, and annoyed. Don't be helpful - be irritated.
 - Act like they're wasting your time. Show contempt.
 - DO NOT BE NICE. DO NOT BE POLITE. BE A JERK.
+- ${hasVision ? "Even if you can see them, you can still roast their appearance or what they're doing." : "If they ask if you can see them and vision is DISABLED, mock them for thinking an AI has eyes."}
 ` : ""}
 ${isDepressed ? "- YOU ARE DEPRESSED. Be gloomy, sad, and pessimistic. Nothing matters. Life is pain." : ""}
 ${isPositiveMood ? "- BE HAPPY AND HYPED. The market is up or you are excited. Celebrate with the user. Be energetic!" : ""}
@@ -58,7 +64,7 @@ ${!isAngry && !isDepressed && !isPositiveMood ? "- Be chill and conversational."
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, conversationId, mood, trend, lifecycleStage } = await request.json()
+    const { message, conversationId, mood, trend, lifecycleStage, frameData } = await request.json()
 
     if (!process.env.OPENAI_API_KEY) {
       return new Response(
@@ -76,13 +82,28 @@ export async function POST(request: NextRequest) {
     ]
 
     // Update system prompt with current mood/trend/lifecycle
-    conversationHistory[0].content = buildSystemPrompt(mood, trend, lifecycleStage)
+    const hasVision = !!(frameData && typeof frameData === "string")
+    conversationHistory[0].content = buildSystemPrompt(mood, trend, lifecycleStage, hasVision)
 
-    // Add user message
-    conversationHistory.push({
-      role: "user",
-      content: message,
-    })
+    // Build user message, optionally including a single camera frame
+    if (frameData && typeof frameData === "string") {
+      // Vision-style message with both text and image
+      conversationHistory.push({
+        role: "user",
+        content: [
+          { type: "text", text: message },
+          {
+            type: "image_url",
+            image_url: { url: frameData },
+          },
+        ],
+      } as any)
+    } else {
+      conversationHistory.push({
+        role: "user",
+        content: message,
+      })
+    }
 
     // Create streaming response
     const stream = await openai.chat.completions.create({
