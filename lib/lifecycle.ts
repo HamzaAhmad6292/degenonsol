@@ -9,12 +9,13 @@ export interface LifecycleInfo {
 
 // Durations in milliseconds
 const HOUR = 60 * 60 * 1000
+
 export const STAGE_DURATIONS = {
-  born: 1 * HOUR,
-  baby: 4 * HOUR,
-  adult: 4 * HOUR,
-  old: 4 * HOUR,
-  dead: 2 * HOUR,
+  born: HOUR,
+  baby: HOUR,
+  adult: HOUR,
+  old: HOUR,
+  dead: HOUR,
 }
 
 export const CYCLE_DURATION = Object.values(STAGE_DURATIONS).reduce((a, b) => a + b, 0)
