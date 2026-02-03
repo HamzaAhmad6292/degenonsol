@@ -3,18 +3,24 @@ import { NextResponse } from "next/server"
 export const dynamic = "force-dynamic"
 export const revalidate = 0
 
-/** 
- * Fixed start time for the project. 
- * Defaults to Feb 3, 2026, 00:00:00 UTC if not provided in .env
+/**
+ * Cycle start time: when this server process (or first request in this instance) started.
+ * - Local: process.uptime() is stable, so start is when the Node process started.
+ * - Vercel: cold start has uptime 0 (so start = now, we begin at "born"); warm requests
+ *   reuse the same start. Cycle advances every 30s per stage (see lib/lifecycle.ts).
  */
-const PROJECT_START_TIME = process.env.LIFECYCLE_START_TIME
-  ? parseInt(process.env.LIFECYCLE_START_TIME)
-  : 1738540800000
+let cachedStartTimeMs: number | null = null
+
+function getCycleStartTime(): number {
+  if (cachedStartTimeMs != null) return cachedStartTimeMs
+  const start = Date.now() - process.uptime() * 1000
+  cachedStartTimeMs = start
+  return start
+}
 
 export async function GET() {
-  const startTime = PROJECT_START_TIME
-  const now = Date.now()
-  const uptime = (now - startTime) / 1000
+  const startTime = getCycleStartTime()
+  const uptime = process.uptime()
 
   return NextResponse.json(
     {

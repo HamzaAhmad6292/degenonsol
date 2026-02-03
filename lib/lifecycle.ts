@@ -7,15 +7,15 @@ export interface LifecycleInfo {
   nextStageIn?: number // ms until next stage
 }
 
-// Durations in milliseconds
-const HOUR = 60 * 60 * 1000
+// Stage duration: 30 seconds each so the avatar changes every 30s (local + Vercel).
+const STAGE_MS = 30 * 1000
 
 export const STAGE_DURATIONS = {
-  born: 1 * HOUR,
-  baby: 4 * HOUR,
-  adult: 4 * HOUR,
-  old: 4 * HOUR,
-  dead: 2 * HOUR,
+  born: STAGE_MS,
+  baby: STAGE_MS,
+  adult: STAGE_MS,
+  old: STAGE_MS,
+  dead: STAGE_MS,
 }
 
 export const CYCLE_DURATION = Object.values(STAGE_DURATIONS).reduce((a, b) => a + b, 0)
@@ -28,7 +28,7 @@ export function getLifecycleStage(serverStartTime: number): LifecycleInfo {
 
   let accumulatedTime = 0
 
-  // Born: 0 - 1h
+  // Born → baby → adult → old → dead (30s each)
   accumulatedTime += STAGE_DURATIONS.born
   if (cyclePosition < accumulatedTime) {
     return {
@@ -39,7 +39,6 @@ export function getLifecycleStage(serverStartTime: number): LifecycleInfo {
     }
   }
 
-  // Baby: 1h - 5h
   accumulatedTime += STAGE_DURATIONS.baby
   if (cyclePosition < accumulatedTime) {
     return {
@@ -49,7 +48,6 @@ export function getLifecycleStage(serverStartTime: number): LifecycleInfo {
     }
   }
 
-  // Adult: 5h - 9h
   accumulatedTime += STAGE_DURATIONS.adult
   if (cyclePosition < accumulatedTime) {
     return {
@@ -59,7 +57,6 @@ export function getLifecycleStage(serverStartTime: number): LifecycleInfo {
     }
   }
 
-  // Old: 9h - 13h
   accumulatedTime += STAGE_DURATIONS.old
   if (cyclePosition < accumulatedTime) {
     return {
@@ -69,7 +66,7 @@ export function getLifecycleStage(serverStartTime: number): LifecycleInfo {
     }
   }
 
-  // Dead: 13h - 15h
+  // dead
   return {
     stage: "dead",
     canInteract: false,

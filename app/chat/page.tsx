@@ -60,29 +60,28 @@ export default function ChatPage() {
   const [previousGifState, setPreviousGifState] = useState<GifState>("idle")
   const [arOpen, setArOpen] = useState(false)
 
-  // Fetch server uptime on mount and align start time to the client clock
+  // Fetch cycle start time once on mount (same for local + Vercel; cycle advances every 30s per stage)
   useEffect(() => {
     fetch("/api/lifecycle", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
-        const uptimeSeconds = typeof data.uptime === "number" ? data.uptime : 0
-        const alignedStartTime = Date.now() - uptimeSeconds * 1000
-        setServerStartTime(alignedStartTime)
-        setLifecycle(getLifecycleStage(alignedStartTime))
+        const start = typeof data.startTime === "number" ? data.startTime : Date.now()
+        setServerStartTime(start)
+        setLifecycle(getLifecycleStage(start))
       })
       .catch((err) => {
         console.error("Failed to fetch lifecycle info:", err)
-        const fallbackStart = Date.now() - 2 * 60 * 60 * 1000
+        const fallbackStart = Date.now()
         setServerStartTime(fallbackStart)
         setLifecycle(getLifecycleStage(fallbackStart))
       })
   }, [])
 
-  // Update lifecycle every 10s so stage transitions are visible
+  // Update lifecycle every 5s so 30s stage transitions are visible
   useEffect(() => {
     const interval = setInterval(() => {
       setLifecycle(getLifecycleStage(serverStartTime))
-    }, 10000)
+    }, 5000)
     return () => clearInterval(interval)
   }, [serverStartTime])
 
