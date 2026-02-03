@@ -45,6 +45,7 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
   const [gifError, setGifError] = useState(false)
   const [photoFeedback, setPhotoFeedback] = useState(false)
   const [hintVisible, setHintVisible] = useState(true)
+  const [facingMode, setFacingMode] = useState<"environment" | "user">("environment")
 
   // Overlay transform: position (px from center), scale, rotation (deg)
   const [position, setPosition] = useState({ x: 0, y: 0 })
@@ -88,10 +89,16 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
     return () => clearTimeout(t)
   }, [])
 
-  // Request back (environment) camera
+  // Request camera stream (front or back depending on facingMode)
   useEffect(() => {
     let mounted = true
     setError(null)
+
+    // Stop any previous stream before switching cameras
+    streamRef.current?.getTracks().forEach((t) => t.stop())
+    streamRef.current = null
+    setStream(null)
+
     const tryCamera = (constraints: MediaStreamConstraints) =>
       navigator.mediaDevices.getUserMedia(constraints).then(
         (s) => {
@@ -108,9 +115,10 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
           setError(err.message || "Camera access denied")
         }
       )
+
     tryCamera({
       video: {
-        facingMode: { ideal: "environment" },
+        facingMode: { ideal: facingMode },
         width: { ideal: 1280 },
         height: { ideal: 720 },
       },
@@ -118,13 +126,14 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
     }).catch(() => {
       if (mounted) tryCamera({ video: true, audio: false })
     })
+
     return () => {
       mounted = false
       streamRef.current?.getTracks().forEach((t) => t.stop())
       streamRef.current = null
       setStream(null)
     }
-  }, [])
+  }, [facingMode])
 
   useEffect(() => {
     if (!stream || !videoRef.current) return
@@ -304,6 +313,10 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
     )
   }, [position, scale, rotation])
 
+  const toggleCameraFacingMode = useCallback(() => {
+    setFacingMode((prev) => (prev === "environment" ? "user" : "environment"))
+  }, [])
+
   return (
     <div className="fixed inset-0 z-100 bg-black touch-none">
       <video
@@ -381,6 +394,17 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
       {/* Bottom controls */}
       <div className="absolute bottom-4 left-0 right-0 flex flex-col items-center gap-2 z-20">
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={toggleCameraFacingMode}
+            className="p-3 rounded-full bg-black/50 text-white border border-white/20 hover:bg-black/70 active:scale-95 transition-all"
+            aria-label="Switch camera"
+            title="Switch camera"
+          >
+            <span className="text-xs font-semibold">
+              {facingMode === "environment" ? "Rear" : "Front"}
+            </span>
+          </button>
           <button
             type="button"
             onClick={resetTransform}
