@@ -60,24 +60,30 @@ export default function ChatPage() {
   const [previousGifState, setPreviousGifState] = useState<GifState>("idle")
   const [arOpen, setArOpen] = useState(false)
 
-  // Fetch server start time on mount
+  // Fetch server start time on mount (persisted on server so cycle survives restarts)
   useEffect(() => {
-    fetch('/api/lifecycle')
-      .then(res => res.json())
-      .then(data => {
+    fetch("/api/lifecycle")
+      .then((res) => res.json())
+      .then((data) => {
         if (data.startTime) {
           setServerStartTime(data.startTime)
           setLifecycle(getLifecycleStage(data.startTime))
         }
       })
-      .catch(err => console.error('Failed to fetch lifecycle info:', err))
+      .catch((err) => {
+        console.error("Failed to fetch lifecycle info:", err)
+        // Fallback so we're not stuck at "born": assume start was 2h ago (adult stage)
+        const fallbackStart = Date.now() - 2 * 60 * 60 * 1000
+        setServerStartTime(fallbackStart)
+        setLifecycle(getLifecycleStage(fallbackStart))
+      })
   }, [])
 
-  // Update lifecycle every minute based on server start time
+  // Update lifecycle every 10s so stage transitions are visible
   useEffect(() => {
     const interval = setInterval(() => {
       setLifecycle(getLifecycleStage(serverStartTime))
-    }, 60000)
+    }, 10000)
     return () => clearInterval(interval)
   }, [serverStartTime])
 
