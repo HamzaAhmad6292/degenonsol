@@ -46,7 +46,7 @@ const ONE_SHOT_GIF_DURATION = 2000 // Adjust based on actual GIF length
 export default function ChatPage() {
   const [chatSentiment, setChatSentiment] = useState<Sentiment | null>(null)
   const [isSpeaking, setIsSpeaking] = useState(false)
-  // Start time comes from API (server process start); cycle restarts when server restarts
+  // Start time is aligned to the client clock using server uptime
   const [serverStartTime, setServerStartTime] = useState<number>(Date.now())
   const [lifecycle, setLifecycle] = useState<LifecycleInfo>(getLifecycleStage(Date.now()))
 
@@ -60,15 +60,15 @@ export default function ChatPage() {
   const [previousGifState, setPreviousGifState] = useState<GifState>("idle")
   const [arOpen, setArOpen] = useState(false)
 
-  // Fetch server start time on mount (cycle restarts with server)
+  // Fetch server uptime on mount and align start time to the client clock
   useEffect(() => {
     fetch("/api/lifecycle")
       .then((res) => res.json())
       .then((data) => {
-        if (data.startTime) {
-          setServerStartTime(data.startTime)
-          setLifecycle(getLifecycleStage(data.startTime))
-        }
+        const uptimeSeconds = typeof data.uptime === "number" ? data.uptime : 0
+        const alignedStartTime = Date.now() - uptimeSeconds * 1000
+        setServerStartTime(alignedStartTime)
+        setLifecycle(getLifecycleStage(alignedStartTime))
       })
       .catch((err) => {
         console.error("Failed to fetch lifecycle info:", err)
