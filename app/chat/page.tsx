@@ -62,7 +62,7 @@ export default function ChatPage() {
 
   // Fetch server uptime on mount and align start time to the client clock
   useEffect(() => {
-    fetch("/api/lifecycle")
+    fetch("/api/lifecycle", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         const uptimeSeconds = typeof data.uptime === "number" ? data.uptime : 0

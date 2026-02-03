@@ -8,21 +8,22 @@ export interface LifecycleInfo {
 }
 
 // Durations in milliseconds
-const HOUR = 60 * 60 * 1000
+const FIVE_MINUTES = 5 * 60 * 1000
 
 export const STAGE_DURATIONS = {
-  born: HOUR,
-  baby: HOUR,
-  adult: HOUR,
-  old: HOUR,
-  dead: HOUR,
+  born: FIVE_MINUTES,
+  baby: FIVE_MINUTES,
+  adult: FIVE_MINUTES,
+  old: FIVE_MINUTES,
+  dead: FIVE_MINUTES,
 }
 
 export const CYCLE_DURATION = Object.values(STAGE_DURATIONS).reduce((a, b) => a + b, 0)
 
 export function getLifecycleStage(serverStartTime: number): LifecycleInfo {
   const now = Date.now()
-  const elapsed = now - serverStartTime
+  // Hardening: avoid negative elapsed (clock skew) which would keep stage stuck at "born".
+  const elapsed = Math.max(0, now - serverStartTime)
   const cyclePosition = elapsed % CYCLE_DURATION
 
   let accumulatedTime = 0
