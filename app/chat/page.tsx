@@ -61,6 +61,7 @@ export default function ChatPage() {
   const [oneShotGif, setOneShotGif] = useState<OneShotGif | null>(null)
   const [previousGifState, setPreviousGifState] = useState<GifState>("idle")
   const [arOpen, setArOpen] = useState(false)
+  const [cameraOpen, setCameraOpen] = useState(false)
 
   // Fetch cycle start time once on mount; store in ref so interval always uses it (cycle repeats correctly)
   useEffect(() => {
@@ -256,10 +257,10 @@ export default function ChatPage() {
         />
       )}
 
-      {/* Draggable self-view camera (Google Meet style) - laptop & phone */}
-      <DraggableCamera />
+      {/* Draggable self-view camera – only when user opts in (not forced on visit) */}
+      {cameraOpen && <DraggableCamera />}
 
-      {/* Side Chat Bubbles - Left and Right of GIF with Input at Bottom */}
+      {/* Side Chat Bubbles - Left and Right of GIF with Input at Bottom (camera toggle next to mic) */}
       <SideChatBubbles 
         onSentimentChange={setChatSentiment}
         onSpeakingChange={setIsSpeaking}
@@ -268,6 +269,8 @@ export default function ChatPage() {
         currentSentiment={chatSentiment}
         onHideChat={() => playOneShotGif("lower50")}
         lifecycle={lifecycle}
+        cameraOpen={cameraOpen}
+        onCameraToggle={() => setCameraOpen((prev) => !prev)}
       />
     </main>
   )

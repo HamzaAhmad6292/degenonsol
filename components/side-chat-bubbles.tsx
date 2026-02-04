@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Send, Loader2, Eye, EyeOff, Mic, Square, Volume2, VolumeX } from "lucide-react"
+import { Send, Loader2, Eye, EyeOff, Mic, Square, Volume2, VolumeX, Video, VideoOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { type Sentiment } from "@/lib/sentiment-analyzer"
 import { useStreamingChat } from "@/hooks/use-streaming-chat"
@@ -17,6 +17,8 @@ interface SideChatBubblesProps {
   currentSentiment?: Sentiment | null
   onHideChat?: () => void
   lifecycle: LifecycleInfo
+  cameraOpen?: boolean
+  onCameraToggle?: () => void
 }
 
 // Add type definition for Web Speech API
@@ -34,7 +36,9 @@ export function SideChatBubbles({
   currentTrend, 
   currentSentiment,
   onHideChat,
-  lifecycle
+  lifecycle,
+  cameraOpen = false,
+  onCameraToggle,
 }: SideChatBubblesProps) {
   const [input, setInput] = useState("")
   const [isChatVisible, setIsChatVisible] = useState(true)
@@ -379,7 +383,15 @@ export function SideChatBubbles({
             )}
           </Button>
 
-          <div className="w-9 md:w-10" /> {/* Spacer to balance Mute button */}
+          <Button
+            onClick={onCameraToggle}
+            type="button"
+            title={cameraOpen ? "Hide camera" : "Show my camera"}
+            className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-md shrink-0 disabled:opacity-50"
+            disabled={!onCameraToggle}
+          >
+            {cameraOpen ? <VideoOff className="w-3.5 h-3.5 md:w-4 md:h-4" /> : <Video className="w-3.5 h-3.5 md:w-4 md:h-4" />}
+          </Button>
         </div>
 
         {/* Input Row */}
