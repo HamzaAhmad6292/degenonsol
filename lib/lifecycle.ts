@@ -37,65 +37,54 @@ function getMsSinceMidnight(): number {
   )
 }
 
-export function getLifecycleStage(_serverStartTime: number): LifecycleInfo {
-  const msSinceMidnight = getMsSinceMidnight()
+export function getLifecycleStage(serverStartTime: number): LifecycleInfo {
+  // When no server start time (e.g. before first fetch), use time-of-day: baby / adult / old only
+  if (!serverStartTime || serverStartTime <= 0) {
+    const msSinceMidnight = getMsSinceMidnight()
+    if (msSinceMidnight < EIGHT_HOURS_MS) {
+      return { stage: "baby", canInteract: true, nextStageIn: EIGHT_HOURS_MS - msSinceMidnight }
+    }
+    if (msSinceMidnight < 2 * EIGHT_HOURS_MS) {
+      return { stage: "adult", canInteract: true, nextStageIn: 2 * EIGHT_HOURS_MS - msSinceMidnight }
+    }
+    return { stage: "old", canInteract: true, nextStageIn: 24 * HOUR_MS - msSinceMidnight }
+  }
 
-  // 24h day split into 3 states of 8 hours each (time-of-day based)
-  if (msSinceMidnight < EIGHT_HOURS_MS) {
+  // Full cycle from server start: born → baby → adult → old → dead (each stage = STAGE_MS)
+  const now = Date.now()
+  const elapsed = Math.max(0, now - serverStartTime)
+  const cyclePosition = elapsed % CYCLE_DURATION
+  let accumulatedTime = 0
+
+  accumulatedTime += STAGE_DURATIONS.born
+  if (cyclePosition < accumulatedTime) {
     return {
-      stage: "baby",
-      canInteract: true,
-      nextStageIn: EIGHT_HOURS_MS - msSinceMidnight,
+      stage: "born",
+      canInteract: false,
+      systemMessage: "Degen was just born. She can't talk yet.",
+      nextStageIn: accumulatedTime - cyclePosition,
     }
   }
-  if (msSinceMidnight < 2 * EIGHT_HOURS_MS) {
-    return {
-      stage: "adult",
-      canInteract: true,
-      nextStageIn: 2 * EIGHT_HOURS_MS - msSinceMidnight,
-    }
+
+  accumulatedTime += STAGE_DURATIONS.baby
+  if (cyclePosition < accumulatedTime) {
+    return { stage: "baby", canInteract: true, nextStageIn: accumulatedTime - cyclePosition }
   }
+
+  accumulatedTime += STAGE_DURATIONS.adult
+  if (cyclePosition < accumulatedTime) {
+    return { stage: "adult", canInteract: true, nextStageIn: accumulatedTime - cyclePosition }
+  }
+
+  accumulatedTime += STAGE_DURATIONS.old
+  if (cyclePosition < accumulatedTime) {
+    return { stage: "old", canInteract: true, nextStageIn: accumulatedTime - cyclePosition }
+  }
+
   return {
-    stage: "old",
-    canInteract: true,
-    nextStageIn: 24 * HOUR_MS - msSinceMidnight,
+    stage: "dead",
+    canInteract: false,
+    systemMessage: "Degen is dead. You can't talk right now. Come back later.",
+    nextStageIn: CYCLE_DURATION - cyclePosition,
   }
-
-  // --- Commented out: born and dead states (kept for reference) ---
-  // const now = Date.now()
-  // const elapsed = Math.max(0, now - _serverStartTime)
-  // const cyclePosition = elapsed % CYCLE_DURATION
-  // let accumulatedTime = 0
-  //
-  // accumulatedTime += STAGE_DURATIONS.born
-  // if (cyclePosition < accumulatedTime) {
-  //   return {
-  //     stage: "born",
-  //     canInteract: false,
-  //     systemMessage: "Degen was just born. She can't talk yet.",
-  //     nextStageIn: accumulatedTime - cyclePosition
-  //   }
-  // }
-  //
-  // accumulatedTime += STAGE_DURATIONS.baby
-  // if (cyclePosition < accumulatedTime) {
-  //   return { stage: "baby", canInteract: true, nextStageIn: accumulatedTime - cyclePosition }
-  // }
-  //
-  // accumulatedTime += STAGE_DURATIONS.adult
-  // if (cyclePosition < accumulatedTime) {
-  //   return { stage: "adult", canInteract: true, nextStageIn: accumulatedTime - cyclePosition }
-  // }
-  //
-  // accumulatedTime += STAGE_DURATIONS.old
-  // if (cyclePosition < accumulatedTime) {
-  //   return { stage: "old", canInteract: true, nextStageIn: accumulatedTime - cyclePosition }
-  // }
-  //
-  // return {
-  //   stage: "dead",
-  //   canInteract: false,
-  //   systemMessage: "Degen is dead. You can't talk right now. Come back later.",
-  //   nextStageIn: CYCLE_DURATION - cyclePosition
-  // }
 }

@@ -5,12 +5,28 @@ import { motion } from "framer-motion"
 import { TokenLineChart } from "./token-line-chart"
 import { type TokenPrice } from "./token-price-fetcher"
 import { type GifState, type OneShotGif } from "@/app/chat/page"
-import { type LifecycleInfo } from "@/lib/lifecycle"
+import { type LifecycleInfo, STAGE_DURATIONS } from "@/lib/lifecycle"
 
 interface PricePoint {
   price: number
   time: number
 }
+
+// EA-style witty loading messages for the birth phase
+const BIRTH_LOADING_MESSAGES = [
+  "Assembling otter consciousness...",
+  "Loading cuteness algorithms...",
+  "Syncing with the blockchain...",
+  "Teaching Degen to say 'gm'...",
+  "Warming up the servers...",
+  "Almost there... (we've all heard that before)",
+  "Initializing fluff physics...",
+  "Downloading personality...",
+  "Buffering charisma...",
+  "Calibrating vibes...",
+  "Unlocking the main character energy...",
+  "Rendering cuteness in 4K...",
+]
 
 interface FullscreenOtterDisplayProps {
   chatSentiment?: "positive" | "negative" | "neutral" | null
@@ -38,7 +54,43 @@ export function FullscreenOtterDisplay({
   const [previousGifState, setPreviousGifState] = useState<GifState | null>(null)
   const [priceHistory, setPriceHistory] = useState<PricePoint[]>([])
   const otterContainerRef = useRef<HTMLDivElement>(null)
-  
+  const birthEndTimeRef = useRef<number>(0)
+  const [, setBirthTick] = useState(0)
+  const [birthMessageIndex, setBirthMessageIndex] = useState(0)
+
+  // Birth phase: smooth loading bar and rotating messages
+  useEffect(() => {
+    if (lifecycle.stage !== "born" || lifecycle.nextStageIn == null) return
+    birthEndTimeRef.current = Date.now() + lifecycle.nextStageIn
+  }, [lifecycle.stage, lifecycle.nextStageIn])
+
+  useEffect(() => {
+    if (lifecycle.stage !== "born") return
+    const interval = setInterval(() => {
+      setBirthTick((t) => t + 1)
+    }, 200)
+    return () => clearInterval(interval)
+  }, [lifecycle.stage])
+
+  useEffect(() => {
+    if (lifecycle.stage !== "born") return
+    const interval = setInterval(() => {
+      setBirthMessageIndex((i) => (i + 1) % BIRTH_LOADING_MESSAGES.length)
+    }, 3500)
+    return () => clearInterval(interval)
+  }, [lifecycle.stage])
+
+  const birthProgress =
+    lifecycle.stage === "born"
+      ? Math.min(
+          1,
+          Math.max(
+            0,
+            (STAGE_DURATIONS.born - (birthEndTimeRef.current - Date.now())) / STAGE_DURATIONS.born
+          )
+        )
+      : 0
+
   // Initialize price history with current price
   useEffect(() => {
     if (priceData.price > 0 && priceHistory.length === 0) {
@@ -473,6 +525,42 @@ export function FullscreenOtterDisplay({
           </div>
         </motion.div>
       </div>
+
+      {/* Birth phase: loading bar + witty messages */}
+      {lifecycle.stage === "born" && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-6 px-6"
+          style={{
+            background: "linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.85) 100%)",
+            backdropFilter: "blur(8px)",
+          }}
+        >
+          <p className="text-white/90 text-center text-lg md:text-xl font-medium max-w-md">
+            {BIRTH_LOADING_MESSAGES[birthMessageIndex]}
+          </p>
+          <div className="w-full max-w-sm md:max-w-md">
+            <div
+              className="h-2 rounded-full overflow-hidden bg-white/20 border border-white/20"
+              role="progressbar"
+              aria-valuenow={Math.round(birthProgress * 100)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            >
+              <motion.div
+                className="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-500"
+                style={{ width: `${birthProgress * 100}%` }}
+                transition={{ duration: 0.2 }}
+              />
+            </div>
+            <p className="text-white/50 text-center text-sm mt-2">
+              {Math.round(birthProgress * 100)}%
+            </p>
+          </div>
+        </motion.div>
+      )}
     </div>
   )
 }

@@ -47,8 +47,12 @@ export default function ChatPage() {
   const [chatSentiment, setChatSentiment] = useState<Sentiment | null>(null)
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [serverStartTime, setServerStartTime] = useState<number>(Date.now())
-  const [lifecycle, setLifecycle] = useState<LifecycleInfo>(getLifecycleStage(Date.now()))
-  // Ref keeps the cycle start time stable so the interval always uses it (avoids stuck "born" after first cycle)
+  // Lifecycle is time-of-day (user's local); avoid SSR using server UTC — set from client on mount
+  const [lifecycle, setLifecycle] = useState<LifecycleInfo>(() => ({
+    stage: "adult" as const,
+    canInteract: true,
+    nextStageIn: 0,
+  }))
   const serverStartTimeRef = useRef<number>(Date.now())
   serverStartTimeRef.current = serverStartTime
 
@@ -63,7 +67,12 @@ export default function ChatPage() {
   const [arOpen, setArOpen] = useState(false)
   const [cameraOpen, setCameraOpen] = useState(false)
 
-  // Fetch cycle start time once on mount; store in ref so interval always uses it (cycle repeats correctly)
+  // Set lifecycle once on mount (time-of-day fallback until server start is fetched)
+  useEffect(() => {
+    setLifecycle(getLifecycleStage(serverStartTimeRef.current))
+  }, [])
+
+  // Fetch cycle start time once on mount; lifecycle uses it for born→baby→adult→old→dead cycle
   useEffect(() => {
     fetch("/api/lifecycle", { cache: "no-store" })
       .then((res) => res.json())
@@ -82,7 +91,7 @@ export default function ChatPage() {
       })
   }, [])
 
-  // Update lifecycle every 5s; use ref so we always use the same start time (no stale closure after cycle wraps)
+  // Update lifecycle every 5s (uses server start time for full cycle when available)
   useEffect(() => {
     const interval = setInterval(() => {
       setLifecycle(getLifecycleStage(serverStartTimeRef.current))
