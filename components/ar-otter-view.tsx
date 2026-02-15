@@ -87,6 +87,7 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
   })
   const isResizingRef = useRef(false)
   const overlayRef = useRef<HTMLDivElement>(null)
+  const touchStartPathRef = useRef<string | null>(null)
   const positionRef = useRef(position)
   const scaleRef = useRef(scale)
   const rotationRef = useRef(rotation)
@@ -391,7 +392,7 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
         >
           {!gifLoaded && !gifError && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-lg">
-              <span className="text-white text-sm font-medium">Loading GIF…</span>
+              <span className="text-white text-sm font-medium">Loading Otter...</span>
             </div>
           )}
           <img
@@ -439,10 +440,10 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
         </div>
       )}
 
-      {/* GIF picker — z-20 above overlay; overlay ignores touches here via data-ar-picker */}
+      {/* GIF picker — z-30 above overlay so real mobile gets touches first; path captured on touchStart for reliable touchEnd on iOS/Android */}
       <div
         data-ar-picker
-        className="absolute bottom-24 left-0 right-0 z-20 px-2"
+        className="absolute bottom-24 left-0 right-0 z-30 px-2"
         style={{ touchAction: "manipulation" }}
         onPointerDown={(e) => e.stopPropagation()}
         onPointerMove={(e) => e.stopPropagation()}
@@ -457,17 +458,13 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
                 key={opt.id}
                 type="button"
                 data-gif-path={opt.path}
-                onClick={(e) => {
-                  const path = (e.currentTarget as HTMLButtonElement).dataset.gifPath
-                  // #region agent log
-                  fetch('/api/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ar-otter-view.tsx:pill-onClick',message:'pill onClick fired',data:{path,hasPath:!!path},timestamp:Date.now(),hypothesisId:'A,B,E'})}).catch(()=>{});
-                  // #endregion
-                  if (path) handleSelectGif(path)
+                style={{ touchAction: "manipulation" }}
+                onTouchStart={() => {
+                  touchStartPathRef.current = opt.path
                 }}
-                onPointerDown={(e) => e.stopPropagation()}
                 onTouchEnd={(e) => {
-                  const btn = e.currentTarget
-                  const path = btn.dataset.gifPath
+                  const path = touchStartPathRef.current ?? (e.currentTarget as HTMLButtonElement).dataset.gifPath ?? undefined
+                  touchStartPathRef.current = null
                   // #region agent log
                   fetch('/api/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ar-otter-view.tsx:pill-onTouchEnd',message:'pill onTouchEnd fired',data:{path,hasPath:!!path},timestamp:Date.now(),hypothesisId:'A,B,E'})}).catch(()=>{});
                   // #endregion
@@ -476,6 +473,14 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
                     handleSelectGif(path)
                   }
                 }}
+                onClick={(e) => {
+                  const path = (e.currentTarget as HTMLButtonElement).dataset.gifPath
+                  // #region agent log
+                  fetch('/api/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ar-otter-view.tsx:pill-onClick',message:'pill onClick fired',data:{path,hasPath:!!path},timestamp:Date.now(),hypothesisId:'A,B,E'})}).catch(()=>{});
+                  // #endregion
+                  if (path) handleSelectGif(path)
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
                 className={`shrink-0 rounded-full px-4 py-3 min-h-[44px] text-xs font-medium transition-all whitespace-nowrap flex items-center justify-center ${
                   isSelected
                     ? "bg-white text-black"
