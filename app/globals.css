@@ -25,10 +25,54 @@
   --input: #2C3E30;
   --ring: #D4AF37;
   --radius: 0.5rem;
+
+  /* Chat page: single neutral base so navbar and content match; no green when chart is red */
+  --chat-page-bg: #0d1117;
+  --chat-page-surface: rgba(22, 27, 34, 0.92);
+
+  /* Chat design tokens — dark surface, elevation, hierarchy (neutral base, not green) */
+  --chat-bg: 13 17 23;
+  --chat-bg-gradient-from: rgba(13, 17, 23, 0.4);
+  --chat-bg-gradient-to: rgba(13, 17, 23, 0.95);
+  --chat-surface: rgba(22, 27, 34, 0.88);
+  --chat-surface-sent: rgba(212, 175, 55, 0.18);
+  --chat-surface-received: rgba(255, 255, 255, 0.08);
+  --chat-accent: var(--primary);
+  --chat-muted: rgba(160, 160, 160, 0.7);
+  --chat-border: rgba(255, 255, 255, 0.08);
+  --chat-border-sent: rgba(212, 175, 55, 0.25);
+  --chat-text: rgba(255, 255, 255, 0.95);
+  --chat-text-secondary: rgba(255, 255, 255, 0.85);
+  --chat-text-muted: rgba(255, 255, 255, 0.5);
+  --chat-radius: 1rem;
+  --chat-radius-lg: 1.25rem;
+  --chat-space-bubble: 0.75rem;
+  --chat-space-message: 1rem;
+  --chat-shadow-surface: 0 4px 24px rgba(0, 0, 0, 0.35);
+  --chat-shadow-input: 0 4px 20px rgba(0, 0, 0, 0.25);
+
+  /* Liquid glass — full backdrop value so blur applies to chat bubbles (not only lifecycle card) */
+  --chat-glass-backdrop: blur(64px) saturate(1.7);
+  --chat-glass-bg-received: rgba(255, 255, 255, 0.16);
+  --chat-glass-bg-sent: rgba(212, 175, 55, 0.22);
+  --chat-glass-border: 1px solid rgba(255, 255, 255, 0.12);
+  --chat-glass-border-sent: 1px solid rgba(212, 175, 55, 0.22);
+  --chat-glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+  --chat-glass-shadow-sent: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15), inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+
+  /* Motion system — GPU-friendly, purpose-driven */
+  --motion-micro: 150ms;
+  --motion-interaction: 250ms;
+  --motion-page: 400ms;
+  --ease-out: cubic-bezier(0.33, 1, 0.68, 1);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 }
 
 .dark {
   /* Same as root for now, as the design is inherently dark/luxury */
+  --chat-page-bg: #0d1117;
+  --chat-page-surface: rgba(22, 27, 34, 0.92);
   --background: #0F1F12;
   --foreground: #F0F0F0;
   --card: #1A2C1E;
@@ -144,7 +188,7 @@
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
-/* Custom Scrollbar */
+/* Chat scrollbar — uses design token */
 @layer utilities {
   .scrollbar-luxury::-webkit-scrollbar {
     width: 6px;
@@ -158,5 +202,32 @@
   }
   .scrollbar-luxury::-webkit-scrollbar-thumb:hover {
     background-color: rgba(212, 175, 55, 0.5);
+  }
+}
+
+/* AR button: 1–2 pulse cycles on first render, then stop (class removed by JS) */
+.chat-ar-pulse {
+  animation: chat-ar-pulse 1s ease-in-out 2;
+}
+@keyframes chat-ar-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.35);
+  }
+  50% {
+    transform: scale(1.06);
+    box-shadow: 0 0 16px 2px rgba(212, 175, 55, 0.4);
+  }
+}
+
+/* Respect user motion preference — disable all non-essential animation */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

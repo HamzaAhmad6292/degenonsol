@@ -1,6 +1,11 @@
 import { NextRequest } from "next/server"
 import OpenAI from "openai"
 import { otterSoulConfig } from "@/lib/otter-soul"
+import {
+  extractSolanaWalletFromText,
+  fetchDegenBalanceForWallet,
+  formatWalletBalanceForContext,
+} from "@/lib/wallet-degen"
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -10,12 +15,14 @@ const openai = new OpenAI({
 // In-memory conversation storage (in production, use a database)
 const conversations = new Map<string, Array<{ role: "user" | "assistant" | "system"; content: string }>>()
 
-// Build dynamic system prompt based on mood, trend, and lifecycle
-function buildSystemPrompt(mood?: string, trend?: string, lifecycleStage?: string, hasVision: boolean = false): string {
-  if (!mood && !trend && !lifecycleStage && !hasVision) {
-    return otterSoulConfig.systemPrompt
-  }
-
+// Build dynamic system prompt based on mood, trend, lifecycle, and optional wallet balance context
+function buildSystemPrompt(
+  mood?: string,
+  trend?: string,
+  lifecycleStage?: string,
+  hasVision: boolean = false,
+  walletBalanceContext?: string
+): string {
   const isAngry = mood === "angry" || (trend === "down" && mood !== "depressed")
   const isDepressed = mood === "depressed"
   const isPositiveMood = ["excited", "happy"].includes(mood || "") || trend === "up"
@@ -28,8 +35,21 @@ function buildSystemPrompt(mood?: string, trend?: string, lifecycleStage?: strin
     ageModifier = "- YOU ARE AN OLD OTTER. Be wise, a bit slower, maybe a bit grumpy or very calm. Use phrases like 'back in my day' or 'I've seen many cycles'."
   }
 
+  const walletBlock = walletBalanceContext
+    ? `
+
+## User wallet (only when they shared it in this message)
+${walletBalanceContext}
+`
+    : ""
+
+  if (!mood && !trend && !lifecycleStage && !hasVision && !walletBalanceContext) {
+    return otterSoulConfig.systemPrompt + (walletBlock || "")
+  }
+
   return `
 ${otterSoulConfig.systemPrompt}
+${walletBlock}
 
 ## Current State
 - **Age Stage**: ${(lifecycleStage || 'adult').toUpperCase()}
@@ -81,9 +101,18 @@ export async function POST(request: NextRequest) {
       },
     ]
 
-    // Update system prompt with current mood/trend/lifecycle
     const hasVision = !!(frameData && typeof frameData === "string")
-    conversationHistory[0].content = buildSystemPrompt(mood, trend, lifecycleStage, hasVision)
+
+    // When user explicitly mentions a Solana wallet, fetch $DEGEN balance and add to context for the LLM
+    let walletBalanceContext: string | undefined
+    const userMessageText = typeof message === "string" ? message : ""
+    const wallet = extractSolanaWalletFromText(userMessageText)
+    if (wallet) {
+      const balanceResult = await fetchDegenBalanceForWallet(wallet)
+      if (balanceResult) walletBalanceContext = formatWalletBalanceForContext(balanceResult)
+    }
+
+    conversationHistory[0].content = buildSystemPrompt(mood, trend, lifecycleStage, hasVision, walletBalanceContext)
 
     // Build user message, optionally including a single camera frame
     if (frameData && typeof frameData === "string") {

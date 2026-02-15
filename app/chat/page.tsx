@@ -6,7 +6,7 @@ import { SideChatBubbles } from "@/components/side-chat-bubbles"
 import { DraggableCamera } from "@/components/draggable-camera"
 import { motion } from "framer-motion"
 import Link from "next/link"
-import { ArrowLeft, Scan } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 import { ArOtterView } from "@/components/ar-otter-view"
 import { type Sentiment } from "@/lib/sentiment-analyzer"
 import { useTokenPrice } from "@/components/token-price-fetcher"
@@ -184,7 +184,7 @@ export default function ChatPage() {
   }, [priceData, chatSentiment, gifState, intervalChange, selectedInterval, isSpeaking, isAngry, oneShotGif, lifecycle.stage])
 
   return (
-    <main className="fixed inset-0 w-full h-screen overflow-hidden bg-black">
+    <main className="fixed inset-0 w-full h-screen overflow-hidden" style={{ background: "var(--chat-page-bg)" }}>
       {/* Full Screen Otter Display with Chart Background */}
       <FullscreenOtterDisplay 
         chatSentiment={chatSentiment}
@@ -206,7 +206,7 @@ export default function ChatPage() {
         lifecycle={lifecycle}
       />
 
-      {/* Navigation Back Button */}
+      {/* Navigation — same base as page so no black bar */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -214,14 +214,14 @@ export default function ChatPage() {
       >
         <Link
           href="/"
-          className="group flex items-center gap-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-full px-3 py-1.5 md:px-4 md:py-2 text-white hover:bg-white/10 transition-all duration-300"
+          className="group flex items-center gap-2 backdrop-blur-md border border-white/10 rounded-full px-3 py-1.5 md:px-4 md:py-2 text-white transition-all duration-300 hover:bg-white/10"
+          style={{ background: "var(--chat-page-surface)" }}
         >
           <ArrowLeft className="w-3.5 h-3.5 md:w-4 md:h-4 group-hover:-translate-x-1 transition-transform" />
           <span className="text-xs md:text-sm font-medium">Back</span>
         </Link>
       </motion.div>
 
-      {/* TikTok Button - Top Center */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -231,7 +231,8 @@ export default function ChatPage() {
           href="https://tiktok.com/@marcelldegen"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-full px-4 py-1.5 md:px-6 md:py-2 text-white hover:bg-white/10 transition-all duration-300 group shadow-lg"
+          className="flex items-center gap-2 backdrop-blur-md border border-white/10 rounded-full px-4 py-1.5 md:px-6 md:py-2 text-white transition-all duration-300 group shadow-lg hover:bg-white/10"
+          style={{ background: "var(--chat-page-surface)" }}
         >
           <div className="w-4 h-4 md:w-5 md:h-5">
             <TikTokIcon />
@@ -240,24 +241,7 @@ export default function ChatPage() {
         </a>
       </motion.div>
 
-      {/* AR Button - Top Right */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="fixed top-4 right-4 md:top-6 md:right-6 z-50"
-      >
-        <button
-          type="button"
-          onClick={() => setArOpen(true)}
-          className="flex items-center gap-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-full px-3 py-1.5 md:px-4 md:py-2 text-white hover:bg-white/10 transition-all duration-300"
-          aria-label="Open AR view"
-        >
-          <Scan className="w-3.5 h-3.5 md:w-4 md:h-4" />
-          <span className="text-xs md:text-sm font-medium">AR</span>
-        </button>
-      </motion.div>
-
-      {/* AR View - Full screen when open */}
+      {/* AR view — opened via AR button in chat input area */}
       {arOpen && (
         <ArOtterView
           gifState={effectiveGifState}
@@ -269,8 +253,7 @@ export default function ChatPage() {
       {/* Draggable self-view camera – only when user opts in (not forced on visit) */}
       {cameraOpen && <DraggableCamera />}
 
-      {/* Side Chat Bubbles - Left and Right of GIF with Input at Bottom (camera toggle next to mic) */}
-      <SideChatBubbles 
+      <SideChatBubbles
         onSentimentChange={setChatSentiment}
         onSpeakingChange={setIsSpeaking}
         currentMood={gifState}
@@ -280,6 +263,7 @@ export default function ChatPage() {
         lifecycle={lifecycle}
         cameraOpen={cameraOpen}
         onCameraToggle={() => setCameraOpen((prev) => !prev)}
+        onArOpen={() => setArOpen(true)}
       />
     </main>
   )

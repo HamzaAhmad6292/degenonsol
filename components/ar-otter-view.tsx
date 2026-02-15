@@ -6,6 +6,23 @@ import type { GifState } from "@/app/chat/page"
 import type { LifecycleInfo } from "@/lib/lifecycle"
 import { getGifPathForAr } from "@/lib/ar-gif-path"
 
+/** All GIFs the user can pick in AR — one at a time, with short funny labels */
+const AR_GIF_OPTIONS: { id: string; path: string; label: string }[] = [
+  { id: "idle", path: "/gifs/idle.gif", label: "Chill" },
+  { id: "happy", path: "/gifs/happy.gif", label: "Winning" },
+  { id: "sad", path: "/gifs/sad.gif", label: "F's in chat" },
+  { id: "sad_idle", path: "/gifs/sad_idle.gif", label: "Side-eye" },
+  { id: "happy_idle_2", path: "/gifs/happy_idle_2.gif", label: "Feeling good" },
+  { id: "happy_idle_3", path: "/gifs/happy_idle_3.gif", label: "Main character" },
+  { id: "sad_idle_2", path: "/gifs/sad_idle_2.gif", label: "Down bad" },
+  { id: "sad_idle_3", path: "/gifs/sad_idle_3.gif", label: "It's over" },
+  { id: "lower50", path: "/gifs/lower50.gif", label: "Peekaboo 👇" },
+  { id: "upper50", path: "/gifs/upper50.gif", label: "Peekaboo 👆" },
+  { id: "slap", path: "/gifs/slap.gif", label: "Bonk" },
+  { id: "born", path: "/gifs/lifecycle/born.gif", label: "Just born" },
+  { id: "dead", path: "/gifs/lifecycle/dead.gif", label: "RIP" },
+]
+
 interface ArOtterViewProps {
   gifState: GifState
   lifecycle: LifecycleInfo
@@ -36,7 +53,7 @@ const MIN_SCALE = 0.3
 const MAX_SCALE = 2.5
 const DEFAULT_SCALE = 1
 
-/** Back camera + GIF overlay with drag, pinch-zoom, rotate, photo, reset. */
+/** Back camera + GIF overlay with drag, pinch-zoom, rotate, photo, reset. User can pick any GIF. */
 export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const gifImgRef = useRef<HTMLImageElement>(null)
@@ -46,6 +63,8 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
   const [photoFeedback, setPhotoFeedback] = useState(false)
   const [hintVisible, setHintVisible] = useState(true)
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment")
+  const defaultPath = getGifPathForAr(gifState, lifecycle)
+  const [selectedGifPath, setSelectedGifPath] = useState(defaultPath)
 
   // Overlay transform: position (px from center), scale, rotation (deg)
   const [position, setPosition] = useState({ x: 0, y: 0 })
@@ -78,10 +97,13 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
 
   const streamRef = useRef<MediaStream | null>(null)
 
-  // Current GIF path – replica of what's on the main screen
-  const gifPath = getGifPathForAr(gifState, lifecycle)
-  const gifSrc = getAbsoluteGifUrl(gifPath)
+  const gifSrc = getAbsoluteGifUrl(selectedGifPath)
   const fallbackGifSrc = getAbsoluteGifUrl("/gifs/idle.gif")
+
+  const handleSelectGif = useCallback((path: string) => {
+    setSelectedGifPath(path)
+    setGifError(false)
+  }, [])
 
   // Hide hint after 4s
   useEffect(() => {
@@ -390,6 +412,30 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
           Drag to move • Pinch or drag corner to resize • Two-finger twist to rotate
         </div>
       )}
+
+      {/* GIF picker — choose which otter to show (one at a time) */}
+      <div className="absolute bottom-24 left-0 right-0 z-20 px-2">
+        <p className="text-white/80 text-xs font-medium text-center mb-1.5">Pick your otter</p>
+        <div className="flex overflow-x-auto gap-2 justify-start py-1 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent max-w-full">
+          {AR_GIF_OPTIONS.map((opt) => {
+            const isSelected = selectedGifPath === opt.path
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => handleSelectGif(opt.path)}
+                className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-all whitespace-nowrap ${
+                  isSelected
+                    ? "bg-white text-black"
+                    : "bg-black/50 text-white border border-white/30 hover:bg-black/70"
+                }`}
+              >
+                {opt.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
       {/* Bottom controls */}
       <div className="absolute bottom-4 left-0 right-0 flex flex-col items-center gap-2 z-20">

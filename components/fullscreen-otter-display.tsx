@@ -211,185 +211,20 @@ export function FullscreenOtterDisplay({
 
   return (
     <div className="fixed inset-0 w-full h-screen overflow-hidden">
-      {/* Background with Glow Effect */}
+      {/* Background — trend tint (red/green/neutral) blends into same neutral base as navbar */}
       <div 
         className="absolute inset-0 transition-all duration-1000 ease-in-out z-0"
         style={{
           background: `linear-gradient(135deg, ${
             trend === "up"
-              ? "rgba(34, 197, 94, 0.15)" // Green for price increase
+              ? "rgba(34, 197, 94, 0.18)"
               : trend === "down"
-              ? "rgba(239, 68, 68, 0.1)" // Red for price decrease
-              : "rgba(255, 255, 255, 0.05)" // White for idle (no significant change)
-          } 0%, rgba(0, 0, 0, 0.85) 100%)`,
-          boxShadow: `0 0 80px ${glowColor}, inset 0 0 80px ${glowColor}`,
+              ? "rgba(239, 68, 68, 0.2)"
+              : "rgba(255, 255, 255, 0.06)"
+          } 0%, var(--chat-page-bg) 100%)`,
+          boxShadow: `0 0 80px ${glowColor}`,
         }}
       >
-        {/* === INTENSITY LEVEL 2 & 3 EFFECTS === */}
-        
-        {/* Pulsing Radial Rings - Level 2+ */}
-        {intensityLevel >= 2 && (
-          <>
-            <motion.div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: `radial-gradient(circle at 50% 50%, transparent 30%, ${colorScheme.primary}0.08) 50%, transparent 70%)`,
-              }}
-              animate={{
-                scale: [1, 1.2, 1],
-                opacity: [0.3, 0.6, 0.3],
-              }}
-              transition={{
-                duration: 3,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-            />
-            <motion.div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: `radial-gradient(circle at 50% 50%, transparent 40%, ${colorScheme.secondary}0.06) 60%, transparent 80%)`,
-              }}
-              animate={{
-                scale: [1.1, 1.3, 1.1],
-                opacity: [0.2, 0.5, 0.2],
-              }}
-              transition={{
-                duration: 4,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: 0.5,
-              }}
-            />
-          </>
-        )}
-        
-        {/* Aurora Shimmer Effect - Level 2+ */}
-        {intensityLevel >= 2 && (
-          <motion.div
-            className="absolute inset-0 pointer-events-none overflow-hidden"
-            animate={{
-              opacity: [0.15, 0.25, 0.15],
-            }}
-            transition={{
-              duration: 5,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-          >
-            <motion.div
-              className="absolute w-[200%] h-[200%] -left-1/2 -top-1/2"
-              style={{
-                background: `conic-gradient(from 0deg at 50% 50%, 
-                  transparent 0deg, 
-                  ${colorScheme.primary}0.1) 30deg, 
-                  transparent 60deg, 
-                  ${colorScheme.accent}0.08) 120deg, 
-                  transparent 180deg,
-                  ${colorScheme.secondary}0.1) 240deg,
-                  transparent 300deg,
-                  ${colorScheme.primary}0.08) 330deg,
-                  transparent 360deg
-                )`,
-              }}
-              animate={{
-                rotate: [0, 360],
-              }}
-              transition={{
-                duration: 20,
-                repeat: Infinity,
-                ease: "linear",
-              }}
-            />
-          </motion.div>
-        )}
-        
-        {/* === INTENSITY LEVEL 3 EXTRA EFFECTS === */}
-        
-        {/* Breathing Halo - Level 3 Only */}
-        {intensityLevel >= 3 && (
-          <>
-            <motion.div
-              className="absolute pointer-events-none"
-              style={{
-                left: '50%',
-                top: '50%',
-                width: '60vmin',
-                height: '60vmin',
-                transform: 'translate(-50%, -50%)',
-                borderRadius: '50%',
-                background: `radial-gradient(circle, ${colorScheme.primary}0.15) 0%, transparent 70%)`,
-                filter: 'blur(40px)',
-              }}
-              animate={{
-                scale: [1, 1.4, 1],
-                opacity: [0.4, 0.7, 0.4],
-              }}
-              transition={{
-                duration: 2.5,
-                repeat: Infinity,
-                ease: "easeInOut",
-              }}
-            />
-            {/* Secondary Halo */}
-            <motion.div
-              className="absolute pointer-events-none"
-              style={{
-                left: '50%',
-                top: '50%',
-                width: '80vmin',
-                height: '80vmin',
-                transform: 'translate(-50%, -50%)',
-                borderRadius: '50%',
-                border: `2px solid ${colorScheme.primary}0.2)`,
-                boxShadow: `0 0 30px ${colorScheme.primary}0.3), inset 0 0 30px ${colorScheme.primary}0.1)`,
-              }}
-              animate={{
-                scale: [1, 1.2, 1],
-                opacity: [0.3, 0.6, 0.3],
-              }}
-              transition={{
-                duration: 3,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: 0.3,
-              }}
-            />
-          </>
-        )}
-        
-        {/* Floating Particle Orbs - Level 3 Only */}
-        {intensityLevel >= 3 && (
-          <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            {[...Array(6)].map((_, i) => (
-              <motion.div
-                key={i}
-                className="absolute rounded-full"
-                style={{
-                  width: `${15 + i * 5}px`,
-                  height: `${15 + i * 5}px`,
-                  background: `radial-gradient(circle, ${colorScheme.accent}0.4) 0%, transparent 70%)`,
-                  filter: 'blur(3px)',
-                  left: `${15 + i * 15}%`,
-                  top: `${20 + (i % 3) * 25}%`,
-                }}
-                animate={{
-                  y: [0, -30, 0],
-                  x: [0, (i % 2 === 0 ? 20 : -20), 0],
-                  opacity: [0.3, 0.6, 0.3],
-                  scale: [1, 1.2, 1],
-                }}
-                transition={{
-                  duration: 4 + i * 0.5,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: i * 0.3,
-                }}
-              />
-            ))}
-          </div>
-        )}
-        
         {/* Animated Line Chart Background - Always Visible */}
         <div className="absolute inset-0 z-0">
           <TokenLineChart 
@@ -526,13 +361,13 @@ export function FullscreenOtterDisplay({
         </motion.div>
       </div>
 
-      {/* Birth phase: loading bar + witty messages */}
+      {/* Birth phase: loading bar + witty messages (z-50, positioned high so visible above chat) */}
       {lifecycle.stage === "born" && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-6 px-6"
+          className="absolute inset-0 z-50 flex flex-col items-center justify-start pt-16 sm:pt-20 md:pt-24 gap-6 px-6"
           style={{
             background: "linear-gradient(180deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.85) 100%)",
             backdropFilter: "blur(8px)",

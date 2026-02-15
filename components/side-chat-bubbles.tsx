@@ -2,12 +2,17 @@
 
 import { useState, useRef, useEffect, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Send, Loader2, Eye, EyeOff, Mic, Square, Volume2, VolumeX, Video, VideoOff } from "lucide-react"
+import { Send, Loader2, Eye, EyeOff, Mic, Square, Volume2, VolumeX, Video, VideoOff, ScanEye, ChevronDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { type Sentiment } from "@/lib/sentiment-analyzer"
 import { useStreamingChat } from "@/hooks/use-streaming-chat"
 import { type GifState } from "@/app/chat/page"
 import { type LifecycleInfo } from "@/lib/lifecycle"
+
+/** Format timestamp for message metadata (e.g. "2:34 PM") */
+function formatMessageTime(date: Date): string {
+  return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", hour12: true })
+}
 
 interface SideChatBubblesProps {
   onSentimentChange?: (sentiment: Sentiment | null) => void
@@ -19,6 +24,8 @@ interface SideChatBubblesProps {
   lifecycle: LifecycleInfo
   cameraOpen?: boolean
   onCameraToggle?: () => void
+  /** Opens AR overlay; when provided, AR button is shown in input area with clear label/tooltip */
+  onArOpen?: () => void
 }
 
 // Add type definition for Web Speech API
@@ -39,19 +46,25 @@ export function SideChatBubbles({
   lifecycle,
   cameraOpen = false,
   onCameraToggle,
+  onArOpen,
 }: SideChatBubblesProps) {
   const [input, setInput] = useState("")
   const [isChatVisible, setIsChatVisible] = useState(true)
   const [isRecording, setIsRecording] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
-  
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false)
+  const [arPulseDone, setArPulseDone] = useState(false)
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const conversationIdRef = useRef<string>(`conv-${Date.now()}`)
   const recognitionRef = useRef<any>(null)
   const inputValueRef = useRef("")
-  /** Transcript for current recording session, updated synchronously so we can send on stop without waiting for React state */
   const transcriptRef = useRef("")
-  const handleSendRef = useRef<(text?: string) => Promise<void>>(() => {})
+  const handleSendRef = useRef<(text?: string) => Promise<void>>(() => Promise.resolve())
+  /** IDs present at first paint — only these get staggered entrance; new messages get single entrance */
+  const initialBatchIdsRef = useRef<Set<string>>(new Set())
+  const staggerInitializedRef = useRef(false)
 
   // Use the streaming chat hook
   const {
@@ -68,7 +81,6 @@ export function SideChatBubbles({
     isMuted,
   })
 
-  // Scroll to bottom when messages or streaming content changes
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [])
@@ -76,6 +88,34 @@ export function SideChatBubbles({
   useEffect(() => {
     scrollToBottom()
   }, [messages, streamingContent, scrollToBottom])
+
+  // Stagger only for messages present on first load
+  if (messages.length > 0 && !staggerInitializedRef.current) {
+    staggerInitializedRef.current = true
+    initialBatchIdsRef.current = new Set(messages.map((m) => m.id))
+  }
+
+  // Scroll position: show "jump to latest" when user has scrolled up (with threshold)
+  useEffect(() => {
+    const el = scrollContainerRef.current
+    if (!el) return
+    const threshold = 80
+    const onScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = el
+      const distanceFromBottom = scrollHeight - scrollTop - clientHeight
+      setShowScrollToBottom(distanceFromBottom > threshold)
+    }
+    el.addEventListener("scroll", onScroll, { passive: true })
+    onScroll()
+    return () => el.removeEventListener("scroll", onScroll)
+  }, [messages.length, streamingContent])
+
+  // AR button: subtle pulse 1–2 cycles on first render, then stop
+  useEffect(() => {
+    if (!onArOpen || arPulseDone) return
+    const t = setTimeout(() => setArPulseDone(true), 2000)
+    return () => clearTimeout(t)
+  }, [onArOpen, arPulseDone])
 
   // Sync ref with state for voice recording
   useEffect(() => {
@@ -227,129 +267,150 @@ export function SideChatBubbles({
     }
   }, [isRecording])
 
+  const isInInitialBatch = useCallback((id: string) => initialBatchIdsRef.current.has(id), [])
+
   return (
     <>
       <AnimatePresence>
         {isChatVisible && (
-          <motion.div 
+          <motion.div
+            ref={scrollContainerRef}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20, transition: { duration: 0.2 } }}
+            transition={{ duration: 0.35, ease: [0.65, 0, 0.35, 1] }}
             className="fixed inset-x-0 top-20 bottom-52 z-30 overflow-y-auto scrollbar-luxury pointer-events-auto"
+            style={{
+              fontFamily: "var(--font-chat), var(--font-sans), sans-serif",
+              background: "transparent",
+            }}
           >
             <div className="w-full max-w-2xl mx-auto min-h-full flex flex-col px-4">
-              <div className="flex-1" /> {/* Spacer to push messages to bottom */}
-              <div className="space-y-4 pb-2">
+              <div className="flex-1" />
+              <div className="space-y-4 pb-2" style={{ gap: "var(--chat-space-message)" }}>
                 <AnimatePresence mode="popLayout">
-                  {messages.map((message) => {
+                  {messages.map((message, index) => {
                     const isAssistant = message.role === "assistant"
-                    
+                    const staggerDelay = isInInitialBatch(message.id) ? index * 0.04 : 0
                     return (
                       <motion.div
                         key={message.id}
-                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.98 }}
+                        transition={{
+                          duration: 0.25,
+                          ease: [0.16, 1, 0.3, 1],
+                          delay: staggerDelay,
+                        }}
                         className={`flex ${isAssistant ? "justify-start" : "justify-end"}`}
                       >
                         <div
-                          className={`rounded-2xl p-3 md:p-4 max-w-[85%] md:max-w-[75%] text-sm md:text-base ${
+                          className={`rounded-2xl p-3 md:p-4 max-w-[85%] md:max-w-[75%] ${
                             isAssistant ? "rounded-bl-none" : "rounded-br-none"
                           }`}
                           style={{
-                            background: isAssistant
-                              ? "rgba(255, 255, 255, 0.12)"
-                              : "rgba(212, 175, 55, 0.2)",
-                            backdropFilter: "blur(16px) saturate(1.5)",
-                            WebkitBackdropFilter: "blur(16px) saturate(1.5)",
-                            border: isAssistant
-                              ? "1px solid rgba(255, 255, 255, 0.2)"
-                              : "1px solid rgba(212, 175, 55, 0.3)",
-                            boxShadow: `
-                              0 4px 24px rgba(0, 0, 0, 0.4),
-                              inset 0 1px 0 rgba(255, 255, 255, 0.1)
-                            `,
+                            background: isAssistant ? "var(--chat-glass-bg-received)" : "var(--chat-glass-bg-sent)",
+                            backdropFilter: "var(--chat-glass-backdrop)",
+                            WebkitBackdropFilter: "var(--chat-glass-backdrop)",
+                            border: isAssistant ? "var(--chat-glass-border)" : "var(--chat-glass-border-sent)",
+                            boxShadow: isAssistant ? "var(--chat-glass-shadow)" : "var(--chat-glass-shadow-sent)",
+                            borderRadius: "var(--chat-radius-lg)",
                           }}
                         >
-                          <p className="text-white leading-relaxed whitespace-pre-wrap font-medium">
+                          <p style={{ color: "var(--chat-text-muted)", fontSize: "0.7rem", fontWeight: 600, marginBottom: "0.25rem", letterSpacing: "0.02em" }}>
+                            {isAssistant ? "Otter" : "You"}
+                          </p>
+                          <p style={{ color: "var(--chat-text)", lineHeight: 1.5, whiteSpace: "pre-wrap", fontWeight: 500, fontSize: "0.9375rem" }}>
                             {message.content}
+                          </p>
+                          <p style={{ color: "var(--chat-text-muted)", fontSize: "0.6875rem", marginTop: "0.375rem" }}>
+                            {formatMessageTime(message.timestamp)}
                           </p>
                         </div>
                       </motion.div>
                     )
                   })}
                 </AnimatePresence>
-                
-                {/* Streaming Message */}
+
                 {streamingContent && (
                   <motion.div
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
                     className="flex justify-start"
                   >
                     <div
-                      className="rounded-2xl rounded-bl-none p-3 md:p-4 max-w-[85%] md:max-w-[75%] text-sm md:text-base"
+                      className="rounded-2xl rounded-bl-none p-3 md:p-4 max-w-[85%] md:max-w-[75%]"
                       style={{
-                        background: "rgba(255, 255, 255, 0.12)",
-                        backdropFilter: "blur(16px) saturate(1.5)",
-                        border: "1px solid rgba(255, 255, 255, 0.2)",
+                        background: "var(--chat-glass-bg-received)",
+                        backdropFilter: "var(--chat-glass-backdrop)",
+                        WebkitBackdropFilter: "var(--chat-glass-backdrop)",
+                        border: "var(--chat-glass-border)",
+                        boxShadow: "var(--chat-glass-shadow)",
+                        borderRadius: "var(--chat-radius-lg)",
                       }}
                     >
-                      <p className="text-white leading-relaxed whitespace-pre-wrap font-medium">
+                      <p style={{ color: "var(--chat-text-muted)", fontSize: "0.7rem", fontWeight: 600, marginBottom: "0.25rem" }}>Otter</p>
+                      <p style={{ color: "var(--chat-text)", lineHeight: 1.5, whiteSpace: "pre-wrap", fontWeight: 500, fontSize: "0.9375rem" }}>
                         {streamingContent}
-                        <span className="inline-block w-1.5 h-4 bg-primary ml-1 animate-pulse" />
+                        <span className="inline-block w-1.5 h-4 bg-primary ml-1 animate-pulse" style={{ borderRadius: 2 }} />
                       </p>
                     </div>
                   </motion.div>
                 )}
-                
-                {/* Loading Indicator (when waiting for first chunk) */}
+
                 {isLoading && !streamingContent && (
                   <motion.div
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
                     className="flex justify-start"
                   >
                     <div
                       className="rounded-2xl rounded-bl-none p-4 md:p-5"
                       style={{
-                        background: "rgba(255, 255, 255, 0.12)",
-                        backdropFilter: "blur(16px) saturate(1.5)",
-                        border: "1px solid rgba(255, 255, 255, 0.2)",
+                        background: "var(--chat-glass-bg-received)",
+                        backdropFilter: "var(--chat-glass-backdrop)",
+                        WebkitBackdropFilter: "var(--chat-glass-backdrop)",
+                        border: "var(--chat-glass-border)",
+                        boxShadow: "var(--chat-glass-shadow)",
+                        borderRadius: "var(--chat-radius-lg)",
                       }}
                     >
                       <div className="flex items-center gap-3">
                         <div className="flex gap-1.5">
-                          <span className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                          <span className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                          <span className="w-2 h-2 bg-primary rounded-full animate-bounce"></span>
+                          <span className="w-2 h-2 rounded-full animate-bounce [animation-delay:-0.3s]" style={{ background: "var(--chat-accent)" }} />
+                          <span className="w-2 h-2 rounded-full animate-bounce [animation-delay:-0.15s]" style={{ background: "var(--chat-accent)" }} />
+                          <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: "var(--chat-accent)" }} />
                         </div>
-                        <span className="text-white/60 text-sm font-medium">Otter is thinking...</span>
+                        <span style={{ color: "var(--chat-text-muted)", fontSize: "0.875rem", fontWeight: 500 }}>Otter is thinking...</span>
                       </div>
                     </div>
                   </motion.div>
                 )}
-                
-                {/* Lifecycle System Message */}
+
                 {!lifecycle.canInteract && lifecycle.systemMessage && (
                   <motion.div
-                    initial={{ opacity: 0, y: 10 }}
+                    initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     className="flex justify-center my-8"
                   >
                     <div
                       className="rounded-2xl p-4 md:p-6 max-w-[90%] text-center"
                       style={{
-                        background: "rgba(239, 68, 68, 0.15)",
-                        backdropFilter: "blur(16px) saturate(1.5)",
-                        border: "1px solid rgba(239, 68, 68, 0.3)",
-                        boxShadow: "0 8px 32px rgba(239, 68, 68, 0.2)",
+                        background: "rgba(239, 68, 68, 0.12)",
+                        backdropFilter: "var(--chat-glass-backdrop)",
+                        WebkitBackdropFilter: "var(--chat-glass-backdrop)",
+                        border: "1px solid rgba(239, 68, 68, 0.28)",
+                        boxShadow: "0 8px 32px rgba(239, 68, 68, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1)",
+                        borderRadius: "var(--chat-radius-lg)",
                       }}
                     >
-                      <p className="text-white font-bold text-lg md:text-xl mb-1">
+                      <p style={{ color: "var(--chat-text)", fontWeight: 700, fontSize: "1.125rem", marginBottom: "0.25rem" }}>
                         {lifecycle.systemMessage}
                       </p>
-                      <p className="text-white/60 text-sm">
+                      <p style={{ color: "var(--chat-text-muted)", fontSize: "0.875rem" }}>
                         {lifecycle.stage === "born" ? "Initialization in progress..." : "Resting in peace."}
                       </p>
                     </div>
@@ -359,19 +420,63 @@ export function SideChatBubbles({
                 <div ref={messagesEndRef} />
               </div>
             </div>
+
+            {/* Jump to latest — visible when scrolled up */}
+            <AnimatePresence>
+              {showScrollToBottom && (
+                <motion.button
+                  type="button"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={scrollToBottom}
+                  className="fixed bottom-56 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-medium border shadow-lg"
+                  style={{
+                    background: "var(--chat-surface)",
+                    color: "var(--chat-text-secondary)",
+                    borderColor: "var(--chat-border)",
+                    boxShadow: "var(--chat-shadow-surface)",
+                    transition: "transform var(--motion-micro) var(--ease-out), opacity var(--motion-micro) var(--ease-out)",
+                  }}
+                  onMouseDown={(e) => {
+                    e.currentTarget.style.transform = "translate(-50%, 2px) scale(0.97)"
+                  }}
+                  onMouseUp={(e) => {
+                    e.currentTarget.style.transform = "translate(-50%, 0) scale(1)"
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translate(-50%, 0) scale(1)"
+                  }}
+                >
+                  <ChevronDown className="w-4 h-4" />
+                  Latest
+                </motion.button>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Input Section - Fixed Bottom */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 px-3 md:px-4 pb-4 md:pb-6 pt-6 bg-gradient-to-t from-black via-black/90 to-transparent flex flex-col gap-3 md:gap-4">
-        
-        {/* Mic Button Row - Centered */}
+      {/* Input Section — elevated surface, design tokens, transitions on base */}
+      <div
+        className="fixed bottom-0 left-0 right-0 z-40 px-3 md:px-4 pb-4 md:pb-6 pt-6 flex flex-col gap-3 md:gap-4"
+        style={{
+          background: "linear-gradient(180deg, transparent 0%, var(--chat-bg-gradient-to) 24%, var(--chat-page-bg) 100%)",
+          fontFamily: "var(--font-chat), var(--font-sans), sans-serif",
+        }}
+      >
+        {/* Mic + AR + Camera row — AR contextual next to camera */}
         <div className="flex justify-center items-center gap-3 md:gap-4">
           <Button
             onClick={() => setIsMuted(!isMuted)}
-            className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-md flex-shrink-0"
             disabled={!lifecycle.canInteract}
+            className="w-9 h-9 md:w-10 md:h-10 rounded-full shrink-0 border backdrop-blur-md transition-[transform,opacity,background-color] duration-[var(--motion-micro)] ease-[var(--ease-out)] hover:scale-105 active:scale-[0.97] disabled:opacity-50"
+            style={{
+              background: "var(--chat-surface-received)",
+              color: "var(--chat-text)",
+              borderColor: "var(--chat-border)",
+            }}
           >
             {isMuted ? <VolumeX className="w-3.5 h-3.5 md:w-4 md:h-4" /> : <Volume2 className="w-3.5 h-3.5 md:w-4 md:h-4" />}
           </Button>
@@ -380,53 +485,82 @@ export function SideChatBubbles({
             onClick={toggleRecording}
             type="button"
             disabled={!lifecycle.canInteract}
-            className={`w-12 h-12 md:w-16 md:h-16 rounded-full border border-white/10 transition-all duration-200 shadow-lg flex-shrink-0 ${
-              isRecording 
-                ? "bg-red-500/20 text-red-400 hover:bg-red-500/30 hover:text-red-300 border-red-500/50 animate-pulse scale-110" 
+            className={`w-12 h-12 md:w-16 md:h-16 rounded-full border shrink-0 transition-[transform,opacity,background-color] duration-[var(--motion-micro)] ease-[var(--ease-out)] active:scale-[0.97] shadow-lg ${
+              isRecording
+                ? "bg-red-500/20 text-red-400 border-red-500/50 animate-pulse"
                 : !lifecycle.canInteract
                 ? "bg-white/5 text-white/20 cursor-not-allowed"
-                : "bg-white/10 text-white hover:bg-white/20 hover:text-white hover:scale-105"
+                : "hover:scale-105"
             }`}
+            style={
+              !isRecording && lifecycle.canInteract
+                ? { background: "var(--chat-surface-received)", color: "var(--chat-text)", borderColor: "var(--chat-border)" }
+                : undefined
+            }
           >
-            {isRecording ? (
-              <Square className="w-4 h-4 md:w-6 md:h-6 fill-current" />
-            ) : (
-              <Mic className="w-5 h-5 md:w-8 md:h-8" />
-            )}
+            {isRecording ? <Square className="w-4 h-4 md:w-6 md:h-6 fill-current" /> : <Mic className="w-5 h-5 md:w-8 md:h-8" />}
           </Button>
+
+          {onArOpen != null && (
+            <div className="relative group">
+              <button
+                type="button"
+                onClick={onArOpen}
+                aria-label="Start AR Mode"
+                className={`w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center shrink-0 border backdrop-blur-md transition-[transform,opacity,background-color] duration-[var(--motion-micro)] ease-[var(--ease-out)] hover:scale-105 active:scale-[0.97] ${!arPulseDone ? "chat-ar-pulse" : ""}`}
+                style={{
+                  background: "var(--chat-accent)",
+                  color: "var(--primary-foreground)",
+                  borderColor: "rgba(212, 175, 55, 0.4)",
+                }}
+              >
+                <ScanEye className="w-3.5 h-3.5 md:w-4 md:h-4" aria-hidden />
+              </button>
+              <span
+                className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 rounded text-xs font-medium whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-[var(--motion-micro)] pointer-events-none z-50"
+                style={{ background: "var(--chat-surface)", color: "var(--chat-text-secondary)", border: "1px solid var(--chat-border)", boxShadow: "var(--chat-shadow-surface)" }}
+              >
+                Start AR Mode
+              </span>
+            </div>
+          )}
 
           <Button
             onClick={onCameraToggle}
             type="button"
             title={cameraOpen ? "Hide camera" : "Show my camera"}
-            className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-md shrink-0 disabled:opacity-50"
             disabled={!onCameraToggle}
+            className="w-9 h-9 md:w-10 md:h-10 rounded-full shrink-0 border backdrop-blur-md transition-[transform,opacity,background-color] duration-[var(--motion-micro)] ease-[var(--ease-out)] hover:scale-105 active:scale-[0.97] disabled:opacity-50"
+            style={{
+              background: "var(--chat-surface-received)",
+              color: "var(--chat-text)",
+              borderColor: "var(--chat-border)",
+            }}
           >
             {cameraOpen ? <VideoOff className="w-3.5 h-3.5 md:w-4 md:h-4" /> : <Video className="w-3.5 h-3.5 md:w-4 md:h-4" />}
           </Button>
         </div>
 
-        {/* Input Row */}
+        {/* Input row — elevated field, focus ring transition */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: [0.65, 0, 0.35, 1] }}
           className="max-w-md mx-auto flex items-center gap-2 w-full"
         >
           <Button
             onClick={() => {
-              // Trigger lower50 GIF when hiding chat
-              if (isChatVisible && onHideChat) {
-                onHideChat()
-              }
+              if (isChatVisible && onHideChat) onHideChat()
               setIsChatVisible(!isChatVisible)
             }}
-            className="bg-white/10 hover:bg-white/20 text-white rounded-xl md:rounded-2xl w-10 h-10 md:w-12 md:h-12 flex-shrink-0 flex items-center justify-center backdrop-blur-md border border-white/20 transition-all"
+            className="rounded-xl md:rounded-2xl w-10 h-10 md:w-12 md:h-12 shrink-0 flex items-center justify-center border backdrop-blur-md transition-[transform,opacity,background-color] duration-[var(--motion-micro)] ease-[var(--ease-out)] hover:scale-105 active:scale-[0.97]"
+            style={{
+              background: "var(--chat-surface-received)",
+              color: "var(--chat-text)",
+              borderColor: "var(--chat-border)",
+            }}
           >
-            {isChatVisible ? (
-              <EyeOff className="w-4 h-4 md:w-5 md:h-5" />
-            ) : (
-              <Eye className="w-4 h-4 md:w-5 md:h-5" />
-            )}
+            {isChatVisible ? <EyeOff className="w-4 h-4 md:w-5 md:h-5" /> : <Eye className="w-4 h-4 md:w-5 md:h-5" />}
           </Button>
           <input
             type="text"
@@ -439,31 +573,45 @@ export function SideChatBubbles({
               }
             }}
             placeholder={!lifecycle.canInteract ? "Interaction disabled" : isRecording ? "Listening..." : "Type a message..."}
-            className="flex-1 min-w-0 bg-white/10 border border-white/20 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all text-sm backdrop-blur-md disabled:opacity-50"
             disabled={isLoading || !lifecycle.canInteract}
+            className="flex-1 min-w-0 rounded-xl md:rounded-2xl px-3 md:px-4 py-2.5 md:py-3 text-sm backdrop-blur-md focus:outline-none disabled:opacity-50 transition-[box-shadow,border-color] duration-[var(--motion-interaction)] ease-[var(--ease-in-out)] placeholder:opacity-70"
+            style={{
+              background: "var(--chat-surface-received)",
+              color: "var(--chat-text)",
+              border: "1px solid var(--chat-border)",
+              boxShadow: "var(--chat-shadow-input)",
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.boxShadow = "var(--chat-shadow-input), 0 0 0 2px var(--chat-accent)"
+              e.currentTarget.style.borderColor = "var(--chat-accent)"
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.boxShadow = "var(--chat-shadow-input)"
+              e.currentTarget.style.borderColor = "var(--chat-border)"
+            }}
           />
           <Button
             onClick={() => handleSend()}
             disabled={!input.trim() || isLoading || !lifecycle.canInteract}
-            className="bg-primary text-black hover:bg-primary/90 rounded-xl md:rounded-2xl w-10 h-10 md:w-12 md:h-12 flex-shrink-0 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/20"
+            className="rounded-xl md:rounded-2xl w-10 h-10 md:w-12 md:h-12 shrink-0 flex items-center justify-center border-0 transition-[transform,opacity] duration-[var(--motion-micro)] ease-[var(--ease-out)] hover:scale-105 active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{
+              background: "var(--chat-accent)",
+              color: "var(--primary-foreground)",
+              boxShadow: "var(--chat-shadow-input), 0 0 0 0 rgba(212, 175, 55, 0.2)",
+            }}
           >
-            {isLoading ? (
-              <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4 md:w-5 md:h-5" />
-            )}
+            {isLoading ? <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" /> : <Send className="w-4 h-4 md:w-5 md:h-5" />}
           </Button>
         </motion.div>
 
-        {/* Powered by OpenSouls */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1 }}
           className="text-center pb-safe"
         >
-          <p className="text-[9px] md:text-[10px] text-white/30 font-medium tracking-tight">
-            powered by <span className="text-white/50 font-bold">opensouls</span>
+          <p className="text-[9px] md:text-[10px] font-medium tracking-tight" style={{ color: "var(--chat-text-muted)" }}>
+            powered by <span className="font-bold" style={{ color: "var(--chat-text-secondary)" }}>opensouls</span>
           </p>
         </motion.div>
       </div>
