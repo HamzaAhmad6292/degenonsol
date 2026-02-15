@@ -99,7 +99,6 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
 
   const gifSrc = getAbsoluteGifUrl(selectedGifPath)
   const fallbackGifSrc = getAbsoluteGifUrl("/gifs/idle.gif")
-  const gifSrcWithCacheBuster = `${gifSrc}${gifSrc.includes("?") ? "&" : "?"}v=${encodeURIComponent(selectedGifPath)}`
 
   const handleSelectGif = useCallback((path: string) => {
     setSelectedGifPath(path)
@@ -377,9 +376,8 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
           }}
         >
           <img
-            key={selectedGifPath}
             ref={gifImgRef}
-            src={gifError ? fallbackGifSrc : gifSrcWithCacheBuster}
+            src={gifError ? fallbackGifSrc : gifSrc}
             alt="Otter AR"
             className="w-full h-full object-contain drop-shadow-2xl pointer-events-none"
             draggable={false}
