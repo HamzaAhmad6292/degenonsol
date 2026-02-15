@@ -77,14 +77,14 @@ export default function ChatPage() {
     fetch("/api/lifecycle", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
-        const start = typeof data.startTime === "number" ? data.startTime : Date.now()
+        const start = typeof data.startTime === "number" ? data.startTime : 0
         serverStartTimeRef.current = start
         setServerStartTime(start)
         setLifecycle(getLifecycleStage(start))
       })
       .catch((err) => {
         console.error("Failed to fetch lifecycle info:", err)
-        const fallbackStart = Date.now()
+        const fallbackStart = 0
         serverStartTimeRef.current = fallbackStart
         setServerStartTime(fallbackStart)
         setLifecycle(getLifecycleStage(fallbackStart))

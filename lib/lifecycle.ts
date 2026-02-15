@@ -7,15 +7,16 @@ export interface LifecycleInfo {
   nextStageIn?: number // ms until next stage
 }
 
-// Stage duration: 10 minutes each (used when born/dead logic is enabled).
+// Stage duration: 10 minutes each, except birth and dead = 10 seconds.
 const STAGE_MS = 10 * 60 * 1000
+const SHORT_STAGE_MS = 10 * 1000
 
 export const STAGE_DURATIONS = {
-  born: STAGE_MS,
+  born: SHORT_STAGE_MS,
   baby: STAGE_MS,
   adult: STAGE_MS,
   old: STAGE_MS,
-  dead: STAGE_MS,
+  dead: SHORT_STAGE_MS,
 }
 
 export const CYCLE_DURATION = Object.values(STAGE_DURATIONS).reduce((a, b) => a + b, 0)
@@ -38,8 +39,8 @@ function getMsSinceMidnight(): number {
 }
 
 export function getLifecycleStage(serverStartTime: number): LifecycleInfo {
-  // When no server start time (e.g. before first fetch), use time-of-day: baby / adult / old only
-  if (!serverStartTime || serverStartTime <= 0) {
+  // When server start time is missing (before first fetch), use time-of-day: baby / adult / old only
+  if (serverStartTime == null || serverStartTime < 0) {
     const msSinceMidnight = getMsSinceMidnight()
     if (msSinceMidnight < EIGHT_HOURS_MS) {
       return { stage: "baby", canInteract: true, nextStageIn: EIGHT_HOURS_MS - msSinceMidnight }
@@ -50,9 +51,10 @@ export function getLifecycleStage(serverStartTime: number): LifecycleInfo {
     return { stage: "old", canInteract: true, nextStageIn: 24 * HOUR_MS - msSinceMidnight }
   }
 
-  // Full cycle from server start: born → baby → adult → old → dead (each stage = STAGE_MS)
+  // Full cycle: born → baby → adult → old → dead (loops). When serverStartTime is 0 we use
+  // a global epoch so everyone sees the same stage (Vercel has no writable fs to persist start).
   const now = Date.now()
-  const elapsed = Math.max(0, now - serverStartTime)
+  const elapsed = Math.max(0, now - (serverStartTime || 0))
   const cyclePosition = elapsed % CYCLE_DURATION
   let accumulatedTime = 0
 

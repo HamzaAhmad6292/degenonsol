@@ -313,7 +313,7 @@ export function FullscreenOtterDisplay({
       </div>
 
       {/* Price Display - Top Right */}
-      <div className="absolute top-14 right-2 md:top-6 md:right-6 z-20">
+      <div className="absolute top-14 right-2 md:top-6 md:right-6 z-40">
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
