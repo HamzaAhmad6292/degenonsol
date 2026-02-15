@@ -97,9 +97,19 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
   const streamRef = useRef<MediaStream | null>(null)
 
   const gifSrc = getAbsoluteGifUrl(selectedGifPath)
+  const gifSrcBusted = `${gifSrc}${gifSrc.includes("?") ? "&" : "?"}v=${encodeURIComponent(selectedGifPath)}`
   const fallbackGifSrc = getAbsoluteGifUrl("/gifs/idle.gif")
 
+  // #region agent log
+  useEffect(() => {
+    fetch('/api/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ar-otter-view.tsx:render',message:'selectedGifPath/gifSrc after state',data:{selectedGifPath,gifSrc},timestamp:Date.now(),hypothesisId:'C,D'})}).catch(()=>{});
+  }, [selectedGifPath, gifSrc])
+  // #endregion
+
   const handleSelectGif = useCallback((path: string) => {
+    // #region agent log
+    fetch('/api/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ar-otter-view.tsx:handleSelectGif',message:'handleSelectGif called',data:{path},timestamp:Date.now(),hypothesisId:'A,B'})}).catch(()=>{});
+    // #endregion
     setSelectedGifPath(path)
     setGifError(false)
     setGifLoaded(false)
@@ -387,11 +397,16 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
           <img
             key={selectedGifPath}
             ref={gifImgRef}
-            src={gifError ? fallbackGifSrc : gifSrc}
+            src={gifError ? fallbackGifSrc : gifSrcBusted}
             alt="Otter AR"
             className={`w-full h-full object-contain drop-shadow-2xl pointer-events-none ${!gifLoaded ? "opacity-0" : "opacity-100"}`}
             draggable={false}
-            onLoad={() => setGifLoaded(true)}
+            onLoad={() => {
+              // #region agent log
+              fetch('/api/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ar-otter-view.tsx:img-onLoad',message:'img onLoad',data:{src:gifError ? fallbackGifSrc : gifSrcBusted},timestamp:Date.now(),hypothesisId:'D'})}).catch(()=>{});
+              // #endregion
+              setGifLoaded(true)
+            }}
             onError={() => setGifError(true)}
           />
           {/* Corner resize handle – drag to resize */}
@@ -444,12 +459,18 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
                 data-gif-path={opt.path}
                 onClick={(e) => {
                   const path = (e.currentTarget as HTMLButtonElement).dataset.gifPath
+                  // #region agent log
+                  fetch('/api/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ar-otter-view.tsx:pill-onClick',message:'pill onClick fired',data:{path,hasPath:!!path},timestamp:Date.now(),hypothesisId:'A,B,E'})}).catch(()=>{});
+                  // #endregion
                   if (path) handleSelectGif(path)
                 }}
                 onPointerDown={(e) => e.stopPropagation()}
                 onTouchEnd={(e) => {
                   const btn = e.currentTarget
                   const path = btn.dataset.gifPath
+                  // #region agent log
+                  fetch('/api/debug-log',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'ar-otter-view.tsx:pill-onTouchEnd',message:'pill onTouchEnd fired',data:{path,hasPath:!!path},timestamp:Date.now(),hypothesisId:'A,B,E'})}).catch(()=>{});
+                  // #endregion
                   if (path) {
                     e.preventDefault()
                     handleSelectGif(path)
