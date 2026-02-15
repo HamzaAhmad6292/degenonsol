@@ -306,7 +306,7 @@ export function SideChatBubbles({
                         className={`flex ${isAssistant ? "justify-start" : "justify-end"}`}
                       >
                         <div
-                          className={`rounded-2xl p-3 md:p-4 max-w-[85%] md:max-w-[75%] ${
+                          className={`rounded-xl p-2 md:p-2.5 max-w-[92%] md:max-w-[82%] min-w-0 ${
                             isAssistant ? "rounded-bl-none" : "rounded-br-none"
                           }`}
                           style={{
@@ -316,15 +316,16 @@ export function SideChatBubbles({
                             border: isAssistant ? "var(--chat-glass-border)" : "var(--chat-glass-border-sent)",
                             boxShadow: isAssistant ? "var(--chat-glass-shadow)" : "var(--chat-glass-shadow-sent)",
                             borderRadius: "var(--chat-radius-lg)",
+                            overflow: "hidden",
                           }}
                         >
-                          <p style={{ color: "var(--chat-text-muted)", fontSize: "0.7rem", fontWeight: 600, marginBottom: "0.25rem", letterSpacing: "0.02em" }}>
+                          <p style={{ color: "var(--chat-text-muted)", fontSize: "0.6rem", fontWeight: 600, marginBottom: "0.125rem", letterSpacing: "0.02em" }}>
                             {isAssistant ? "Otter" : "You"}
                           </p>
-                          <p style={{ color: "var(--chat-text)", lineHeight: 1.5, whiteSpace: "pre-wrap", fontWeight: 500, fontSize: "0.9375rem" }}>
+                          <p style={{ color: "var(--chat-text)", lineHeight: 1.45, whiteSpace: "pre-wrap", fontWeight: 500, fontSize: "0.75rem", overflowWrap: "break-word", wordBreak: "break-word" }}>
                             {message.content}
                           </p>
-                          <p style={{ color: "var(--chat-text-muted)", fontSize: "0.6875rem", marginTop: "0.375rem" }}>
+                          <p style={{ color: "var(--chat-text-muted)", fontSize: "0.5625rem", marginTop: "0.25rem" }}>
                             {formatMessageTime(message.timestamp)}
                           </p>
                         </div>
@@ -341,7 +342,7 @@ export function SideChatBubbles({
                     className="flex justify-start"
                   >
                     <div
-                      className="rounded-2xl rounded-bl-none p-3 md:p-4 max-w-[85%] md:max-w-[75%]"
+                      className="rounded-xl rounded-bl-none p-2 md:p-2.5 max-w-[92%] md:max-w-[82%] min-w-0 overflow-hidden"
                       style={{
                         background: "var(--chat-glass-bg-received)",
                         backdropFilter: "var(--chat-glass-backdrop)",
@@ -351,8 +352,8 @@ export function SideChatBubbles({
                         borderRadius: "var(--chat-radius-lg)",
                       }}
                     >
-                      <p style={{ color: "var(--chat-text-muted)", fontSize: "0.7rem", fontWeight: 600, marginBottom: "0.25rem" }}>Otter</p>
-                      <p style={{ color: "var(--chat-text)", lineHeight: 1.5, whiteSpace: "pre-wrap", fontWeight: 500, fontSize: "0.9375rem" }}>
+                      <p style={{ color: "var(--chat-text-muted)", fontSize: "0.6rem", fontWeight: 600, marginBottom: "0.125rem" }}>Otter</p>
+                      <p style={{ color: "var(--chat-text)", lineHeight: 1.45, whiteSpace: "pre-wrap", fontWeight: 500, fontSize: "0.75rem", overflowWrap: "break-word", wordBreak: "break-word" }}>
                         {streamingContent}
                         <span className="inline-block w-1.5 h-4 bg-primary ml-1 animate-pulse" style={{ borderRadius: 2 }} />
                       </p>
@@ -368,7 +369,7 @@ export function SideChatBubbles({
                     className="flex justify-start"
                   >
                     <div
-                      className="rounded-2xl rounded-bl-none p-4 md:p-5"
+                      className="rounded-xl rounded-bl-none p-2.5 md:p-3"
                       style={{
                         background: "var(--chat-glass-bg-received)",
                         backdropFilter: "var(--chat-glass-backdrop)",
@@ -378,13 +379,13 @@ export function SideChatBubbles({
                         borderRadius: "var(--chat-radius-lg)",
                       }}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="flex gap-1.5">
-                          <span className="w-2 h-2 rounded-full animate-bounce [animation-delay:-0.3s]" style={{ background: "var(--chat-accent)" }} />
-                          <span className="w-2 h-2 rounded-full animate-bounce [animation-delay:-0.15s]" style={{ background: "var(--chat-accent)" }} />
-                          <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: "var(--chat-accent)" }} />
+                      <div className="flex items-center gap-2">
+                        <div className="flex gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:-0.3s]" style={{ background: "var(--chat-accent)" }} />
+                          <span className="w-1.5 h-1.5 rounded-full animate-bounce [animation-delay:-0.15s]" style={{ background: "var(--chat-accent)" }} />
+                          <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: "var(--chat-accent)" }} />
                         </div>
-                        <span style={{ color: "var(--chat-text-muted)", fontSize: "0.875rem", fontWeight: 500 }}>Otter is thinking...</span>
+                        <span style={{ color: "var(--chat-text-muted)", fontSize: "0.75rem", fontWeight: 500 }}>Otter is thinking...</span>
                       </div>
                     </div>
                   </motion.div>
@@ -397,7 +398,7 @@ export function SideChatBubbles({
                     className="flex justify-center my-8"
                   >
                     <div
-                      className="rounded-2xl p-4 md:p-6 max-w-[90%] text-center"
+                      className="rounded-xl p-3 md:p-4 max-w-[85%] text-center"
                       style={{
                         background: "rgba(239, 68, 68, 0.12)",
                         backdropFilter: "var(--chat-glass-backdrop)",
@@ -407,10 +408,10 @@ export function SideChatBubbles({
                         borderRadius: "var(--chat-radius-lg)",
                       }}
                     >
-                      <p style={{ color: "var(--chat-text)", fontWeight: 700, fontSize: "1.125rem", marginBottom: "0.25rem" }}>
+                      <p style={{ color: "var(--chat-text)", fontWeight: 700, fontSize: "0.875rem", marginBottom: "0.125rem" }}>
                         {lifecycle.systemMessage}
                       </p>
-                      <p style={{ color: "var(--chat-text-muted)", fontSize: "0.875rem" }}>
+                      <p style={{ color: "var(--chat-text-muted)", fontSize: "0.75rem" }}>
                         {lifecycle.stage === "born" ? "Initialization in progress..." : "Resting in peace."}
                       </p>
                     </div>

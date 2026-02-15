@@ -51,10 +51,10 @@
   --chat-shadow-surface: 0 4px 24px rgba(0, 0, 0, 0.35);
   --chat-shadow-input: 0 4px 20px rgba(0, 0, 0, 0.25);
 
-  /* Liquid glass — full backdrop value so blur applies to chat bubbles (not only lifecycle card) */
-  --chat-glass-backdrop: blur(64px) saturate(1.7);
-  --chat-glass-bg-received: rgba(255, 255, 255, 0.16);
-  --chat-glass-bg-sent: rgba(212, 175, 55, 0.22);
+  /* Liquid glass — light blur + very low tint so otter is visible through bubbles */
+  --chat-glass-backdrop: blur(16px) saturate(1.3);
+  --chat-glass-bg-received: rgba(255, 255, 255, 0.015);
+  --chat-glass-bg-sent: rgba(212, 175, 55, 0.03);
   --chat-glass-border: 1px solid rgba(255, 255, 255, 0.12);
   --chat-glass-border-sent: 1px solid rgba(212, 175, 55, 0.22);
   --chat-glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(255, 255, 255, 0.04);
