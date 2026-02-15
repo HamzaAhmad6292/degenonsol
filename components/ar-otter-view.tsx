@@ -122,6 +122,12 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
     return () => clearTimeout(t)
   }, [])
 
+  // If GIF never fires onLoad (e.g. mobile), stop showing "Loading Otter..." after 10s
+  useEffect(() => {
+    const t = setTimeout(() => setGifLoaded((loaded) => (loaded ? loaded : true)), 10000)
+    return () => clearTimeout(t)
+  }, [selectedGifPath])
+
   // Request camera stream (front or back depending on facingMode)
   useEffect(() => {
     let mounted = true
@@ -408,7 +414,10 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
               // #endregion
               setGifLoaded(true)
             }}
-            onError={() => setGifError(true)}
+            onError={() => {
+              setGifError(true)
+              setGifLoaded(true)
+            }}
           />
           {/* Corner resize handle – drag to resize */}
           <div
