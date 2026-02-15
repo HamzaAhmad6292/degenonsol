@@ -164,6 +164,7 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
+      if ((e.target as HTMLElement).closest?.("[data-ar-picker]")) return
       e.preventDefault()
       const id = e.pointerId
       const x = e.clientX
@@ -360,7 +361,10 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
         ref={overlayRef}
         className="absolute inset-0 z-10 flex items-center justify-center pointer-events-auto"
         style={{ touchAction: "none" }}
-        onPointerDown={handlePointerDown}
+        onPointerDownCapture={(e) => {
+          if ((e.target as HTMLElement).closest?.("[data-ar-picker]")) return
+          handlePointerDown(e)
+        }}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
@@ -413,9 +417,11 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
         </div>
       )}
 
-      {/* GIF picker — z-20 above overlay; stop propagation so overlay never starts drag when tapping a pill */}
+      {/* GIF picker — z-20 above overlay; overlay ignores touches here via data-ar-picker */}
       <div
+        data-ar-picker
         className="absolute bottom-24 left-0 right-0 z-20 px-2"
+        style={{ touchAction: "manipulation" }}
         onPointerDown={(e) => e.stopPropagation()}
         onPointerMove={(e) => e.stopPropagation()}
         onPointerUp={(e) => e.stopPropagation()}
@@ -430,7 +436,11 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
                 type="button"
                 onClick={() => handleSelectGif(opt.path)}
                 onPointerDown={(e) => e.stopPropagation()}
-                className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-all whitespace-nowrap ${
+                onTouchEnd={(e) => {
+                  e.preventDefault()
+                  handleSelectGif(opt.path)
+                }}
+                className={`shrink-0 rounded-full px-4 py-3 min-h-[44px] text-xs font-medium transition-all whitespace-nowrap flex items-center justify-center ${
                   isSelected
                     ? "bg-white text-black"
                     : "bg-black/50 text-white border border-white/30 hover:bg-black/70"
