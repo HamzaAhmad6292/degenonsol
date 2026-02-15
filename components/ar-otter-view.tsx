@@ -355,10 +355,10 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
         </div>
       )}
 
-      {/* Draggable, pinchable, rotatable GIF overlay */}
+      {/* Draggable overlay: z-10 so it sits below picker/controls (z-20); only the GIF area should receive drag */}
       <div
         ref={overlayRef}
-        className="absolute inset-0 flex items-center justify-center pointer-events-auto"
+        className="absolute inset-0 z-10 flex items-center justify-center pointer-events-auto"
         style={{ touchAction: "none" }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -413,8 +413,13 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
         </div>
       )}
 
-      {/* GIF picker — choose which otter to show (one at a time) */}
-      <div className="absolute bottom-24 left-0 right-0 z-20 px-2">
+      {/* GIF picker — z-20 above overlay; stop propagation so overlay never starts drag when tapping a pill */}
+      <div
+        className="absolute bottom-24 left-0 right-0 z-20 px-2"
+        onPointerDown={(e) => e.stopPropagation()}
+        onPointerMove={(e) => e.stopPropagation()}
+        onPointerUp={(e) => e.stopPropagation()}
+      >
         <p className="text-white/80 text-xs font-medium text-center mb-1.5">Pick your otter</p>
         <div className="flex overflow-x-auto gap-2 justify-start py-1 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent max-w-full">
           {AR_GIF_OPTIONS.map((opt) => {
@@ -424,6 +429,7 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
                 key={opt.id}
                 type="button"
                 onClick={() => handleSelectGif(opt.path)}
+                onPointerDown={(e) => e.stopPropagation()}
                 className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-all whitespace-nowrap ${
                   isSelected
                     ? "bg-white text-black"
