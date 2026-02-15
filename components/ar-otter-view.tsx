@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { X, Camera, RotateCcw } from "lucide-react"
 import type { GifState } from "@/app/chat/page"
 import type { LifecycleInfo } from "@/lib/lifecycle"
-import { getGifPathForAr } from "@/lib/ar-gif-path"
 
 /** All GIFs the user can pick in AR — one at a time, with short funny labels */
 const AR_GIF_OPTIONS: { id: string; path: string; label: string }[] = [
@@ -63,8 +62,8 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
   const [photoFeedback, setPhotoFeedback] = useState(false)
   const [hintVisible, setHintVisible] = useState(true)
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment")
-  const defaultPath = getGifPathForAr(gifState, lifecycle)
-  const [selectedGifPath, setSelectedGifPath] = useState(defaultPath)
+  const [selectedGifPath, setSelectedGifPath] = useState("/gifs/idle.gif")
+  const [gifLoaded, setGifLoaded] = useState(false)
 
   // Overlay transform: position (px from center), scale, rotation (deg)
   const [position, setPosition] = useState({ x: 0, y: 0 })
@@ -103,6 +102,7 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
   const handleSelectGif = useCallback((path: string) => {
     setSelectedGifPath(path)
     setGifError(false)
+    setGifLoaded(false)
   }, [])
 
   // Hide hint after 4s
@@ -379,12 +379,19 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
             aspectRatio: "1",
           }}
         >
+          {!gifLoaded && !gifError && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-lg">
+              <span className="text-white text-sm font-medium">Loading GIF…</span>
+            </div>
+          )}
           <img
+            key={selectedGifPath}
             ref={gifImgRef}
             src={gifError ? fallbackGifSrc : gifSrc}
             alt="Otter AR"
-            className="w-full h-full object-contain drop-shadow-2xl pointer-events-none"
+            className={`w-full h-full object-contain drop-shadow-2xl pointer-events-none ${!gifLoaded ? "opacity-0" : "opacity-100"}`}
             draggable={false}
+            onLoad={() => setGifLoaded(true)}
             onError={() => setGifError(true)}
           />
           {/* Corner resize handle – drag to resize */}
@@ -434,11 +441,19 @@ export function ArOtterView({ gifState, lifecycle, onClose }: ArOtterViewProps) 
               <button
                 key={opt.id}
                 type="button"
-                onClick={() => handleSelectGif(opt.path)}
+                data-gif-path={opt.path}
+                onClick={(e) => {
+                  const path = (e.currentTarget as HTMLButtonElement).dataset.gifPath
+                  if (path) handleSelectGif(path)
+                }}
                 onPointerDown={(e) => e.stopPropagation()}
                 onTouchEnd={(e) => {
-                  e.preventDefault()
-                  handleSelectGif(opt.path)
+                  const btn = e.currentTarget
+                  const path = btn.dataset.gifPath
+                  if (path) {
+                    e.preventDefault()
+                    handleSelectGif(path)
+                  }
                 }}
                 className={`shrink-0 rounded-full px-4 py-3 min-h-[44px] text-xs font-medium transition-all whitespace-nowrap flex items-center justify-center ${
                   isSelected
