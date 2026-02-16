@@ -135,7 +135,7 @@ Just the spoken response.
           const stream = await openai.chat.completions.create({
             model: "gpt-4o-mini", // Fast model for chat
             messages: messages,
-            temperature: 0.9, // High creativity for the Otter
+            temperature: 1.2, // Higher creativity & humor, more varied and surprising replies
             max_tokens: 300,
             stream: true,
           })
