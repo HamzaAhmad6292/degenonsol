@@ -6,7 +6,7 @@ import { Send, Loader2, Eye, EyeOff, Mic, Square, Volume2, VolumeX, Video, Video
 import { Button } from "@/components/ui/button"
 import { type Sentiment } from "@/lib/sentiment-analyzer"
 import { useStreamingChat } from "@/hooks/use-streaming-chat"
-import { type GifState } from "@/app/chat/page"
+import { type GifState, type IdentityState } from "@/app/chat/page"
 import { type LifecycleInfo } from "@/lib/lifecycle"
 
 /** Format timestamp for message metadata (e.g. "2:34 PM") */
@@ -26,6 +26,12 @@ interface SideChatBubblesProps {
   onCameraToggle?: () => void
   /** Opens AR overlay; when provided, AR button is shown in input area with clear label/tooltip */
   onArOpen?: () => void
+  identity?: IdentityState
+  onIdentityChange?: (updater: (prev: IdentityState) => IdentityState) => void
+  /** Weather summary for system prompt (multi-coin layers) */
+  weatherContext?: string
+  /** Face recognition not configured (CompreFace/Supabase missing) */
+  faceServiceUnavailable?: boolean
 }
 
 // Add type definition for Web Speech API
@@ -36,17 +42,21 @@ declare global {
   }
 }
 
-export function SideChatBubbles({ 
-  onSentimentChange, 
-  onSpeakingChange, 
-  currentMood, 
-  currentTrend, 
+export function SideChatBubbles({
+  onSentimentChange,
+  onSpeakingChange,
+  currentMood,
+  currentTrend,
   currentSentiment,
   onHideChat,
   lifecycle,
   cameraOpen = false,
   onCameraToggle,
   onArOpen,
+  identity,
+  onIdentityChange,
+  weatherContext,
+  faceServiceUnavailable,
 }: SideChatBubblesProps) {
   const [input, setInput] = useState("")
   const [isChatVisible, setIsChatVisible] = useState(true)
@@ -62,24 +72,44 @@ export function SideChatBubbles({
   const inputValueRef = useRef("")
   const transcriptRef = useRef("")
   const handleSendRef = useRef<(text?: string) => Promise<void>>(() => Promise.resolve())
+  const faceSessionSeededRef = useRef(false)
   /** IDs present at first paint — only these get staggered entrance; new messages get single entrance */
   const initialBatchIdsRef = useRef<Set<string>>(new Set())
   const staggerInitializedRef = useRef(false)
 
-  // Use the streaming chat hook
+  const effectiveConversationId = identity?.conversationId ?? conversationIdRef.current
+
   const {
     messages,
     streamingContent,
     isLoading,
     isSpeaking,
     sendMessage,
+    seedFromFaceSession,
   } = useStreamingChat({
-    conversationId: conversationIdRef.current,
+    conversationId: effectiveConversationId,
+    userId: identity?.userId ?? undefined,
     enableTTS: true,
     onSpeakingStart: () => onSpeakingChange?.(true),
     onSpeakingEnd: () => onSpeakingChange?.(false),
+    onNameStored: (name) => {
+      onIdentityChange?.((prev) => ({ ...prev, displayName: name }))
+    },
     isMuted,
+    lifecycle,
   })
+
+  // When identity gets sessionReady + greeting, seed chat and play greeting once
+  useEffect(() => {
+    if (
+      !identity?.sessionReady ||
+      !identity.greeting ||
+      faceSessionSeededRef.current
+    )
+      return
+    faceSessionSeededRef.current = true
+    seedFromFaceSession(identity.recentMessages, identity.greeting)
+  }, [identity?.sessionReady, identity?.greeting, identity?.recentMessages, seedFromFaceSession])
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -202,8 +232,8 @@ export function SideChatBubbles({
     setInput("")
     
     // Use streaming chat
-    await sendMessage(textToSend.trim(), moodToSend, currentTrend)
-  }, [input, isLoading, isChatVisible, currentMood, currentTrend, onSentimentChange, sendMessage])
+    await sendMessage(textToSend.trim(), moodToSend, currentTrend, weatherContext)
+  }, [input, isLoading, isChatVisible, currentMood, currentTrend, onSentimentChange, sendMessage, weatherContext])
 
   // Keep ref in sync for use inside recognition callbacks (must be after handleSend is defined)
   useEffect(() => {
@@ -271,13 +301,13 @@ export function SideChatBubbles({
 
   return (
     <>
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {isChatVisible && (
           <motion.div
             ref={scrollContainerRef}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 120 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20, transition: { duration: 0.2 } }}
+            exit={{ opacity: 0, y: 120, transition: { duration: 0.3, ease: [0.65, 0, 0.35, 1] } }}
             transition={{ duration: 0.35, ease: [0.65, 0, 0.35, 1] }}
             className="fixed inset-x-0 top-20 bottom-52 z-30 overflow-y-auto scrollbar-luxury pointer-events-auto"
             style={{
@@ -290,6 +320,28 @@ export function SideChatBubbles({
               <div className="space-y-4 pb-2" style={{ gap: "var(--chat-space-message)" }}>
                 <AnimatePresence mode="popLayout">
                   {messages.map((message, index) => {
+                    const isHistorySeparator = "isHistorySeparator" in message && message.isHistorySeparator
+                    if (isHistorySeparator) {
+                      return (
+                        <motion.div
+                          key={message.id}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.25 }}
+                          className="flex items-center gap-3 py-3"
+                        >
+                          <div className="flex-1 h-px shrink-0" style={{ background: "var(--chat-border)" }} />
+                          <span
+                            className="shrink-0 text-xs font-medium tracking-wide uppercase"
+                            style={{ color: "var(--chat-text-muted)" }}
+                          >
+                            Previous conversation
+                          </span>
+                          <div className="flex-1 h-px shrink-0" style={{ background: "var(--chat-border)" }} />
+                        </motion.div>
+                      )
+                    }
                     const isAssistant = message.role === "assistant"
                     const staggerDelay = isInInitialBatch(message.id) ? index * 0.04 : 0
                     return (
@@ -467,6 +519,11 @@ export function SideChatBubbles({
           fontFamily: "var(--font-chat), var(--font-sans), sans-serif",
         }}
       >
+        {faceServiceUnavailable && cameraOpen && (
+          <p className="text-center text-xs text-amber-400/90 px-2">
+            Face recognition not configured. Set COMPREFACE_URL and COMPREFACE_DETECTION_API_KEY in .env to enable.
+          </p>
+        )}
         {/* Mic + AR + Camera row — AR contextual next to camera */}
         <div className="flex justify-center items-center gap-3 md:gap-4">
           <Button
@@ -554,11 +611,13 @@ export function SideChatBubbles({
               if (isChatVisible && onHideChat) onHideChat()
               setIsChatVisible(!isChatVisible)
             }}
+            title={isChatVisible ? "Hide chat" : "Show chat"}
+            aria-label={isChatVisible ? "Hide chat" : "Show chat"}
             className="rounded-xl md:rounded-2xl w-10 h-10 md:w-12 md:h-12 shrink-0 flex items-center justify-center border backdrop-blur-md transition-[transform,opacity,background-color] duration-[var(--motion-micro)] ease-[var(--ease-out)] hover:scale-105 active:scale-[0.97]"
             style={{
-              background: "var(--chat-surface-received)",
-              color: "var(--chat-text)",
-              borderColor: "var(--chat-border)",
+              background: isChatVisible ? "var(--chat-surface-received)" : "var(--chat-accent)",
+              color: isChatVisible ? "var(--chat-text)" : "var(--primary-foreground)",
+              borderColor: isChatVisible ? "var(--chat-border)" : "rgba(212, 175, 55, 0.4)",
             }}
           >
             {isChatVisible ? <EyeOff className="w-4 h-4 md:w-5 md:h-5" /> : <Eye className="w-4 h-4 md:w-5 md:h-5" />}

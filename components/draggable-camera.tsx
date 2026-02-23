@@ -187,7 +187,16 @@ export function DraggableCamera() {
     return () => window.removeEventListener("resize", onResize)
   }, [clampPosition])
 
-  if (error) return null
+  if (error)
+    return (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] px-4 py-2 rounded-xl bg-black/80 border border-red-500/40 text-red-200 text-sm shadow-lg max-w-[90vw] text-center"
+      >
+        Camera unavailable: {error}
+      </motion.div>
+    )
 
   return (
     <motion.div
@@ -195,7 +204,7 @@ export function DraggableCamera() {
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.2 }}
-      className="fixed z-[45] touch-none select-none"
+      className="fixed z-[100] touch-none select-none"
       style={{
         left: position.x,
         top: position.y,
@@ -209,9 +218,10 @@ export function DraggableCamera() {
       onPointerCancel={handlePointerCancel}
     >
       <div
-        className="relative w-full h-full rounded-2xl overflow-hidden border-2 border-white/30 bg-black/80 shadow-xl ring-2 ring-black/40"
+        className="relative w-full h-full rounded-2xl overflow-hidden bg-black shadow-2xl"
         style={{
-          boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+          border: "2px solid rgba(255,255,255,0.5)",
+          boxShadow: "0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,0,0,0.2)",
         }}
       >
         {stream ? (

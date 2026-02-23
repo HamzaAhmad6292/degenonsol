@@ -1,0 +1,43 @@
+{
+  "mainWeather": {
+    "coinId": "DEGEN",
+    "description": "Primary life force — background weather and overall mood",
+    "source": "dexscreener",
+    "tokenAddress": "4Nc2EhF8vqXcjHpbUevYZv9Bv4aKb4fWi7cju7c2pump"
+  },
+  "layers": [
+    {
+      "id": "btc",
+      "coinId": "BTC",
+      "name": "Wind / Storm",
+      "effect": "wind_storm",
+      "visuals": {
+        "particles": "flying_leaves",
+        "motion": "swaying_plants",
+        "intensityFrom": "priceChangePercent",
+        "thresholds": { "low": 0.5, "medium": 2, "high": 5 }
+      },
+      "degenReactions": [
+        "BTC is moving… I can feel the wind!",
+        "Something's shifting out there…",
+        "The big one's stirring. Can you feel it?"
+      ]
+    },
+    {
+      "id": "eth",
+      "coinId": "ETH",
+      "name": "Temperature & Fog",
+      "effect": "temp_fog",
+      "visuals": {
+        "warmGlow": "price_up",
+        "coldFog": "price_down",
+        "tint": { "up": "rgba(255, 200, 100, 0.15)", "down": "rgba(100, 150, 255, 0.2)" }
+      },
+      "degenReactions": [
+        "Gas fees are high… I feel so energetic!",
+        "When ETH's cold, everything moves slow…",
+        "The fog's lifting. I can think again."
+      ]
+    }
+  ]
+}

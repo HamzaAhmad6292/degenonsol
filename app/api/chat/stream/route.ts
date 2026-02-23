@@ -6,6 +6,13 @@ import {
   fetchDegenBalanceForWallet,
   formatWalletBalanceForContext,
 } from "@/lib/wallet-degen"
+import { detectName } from "@/lib/agents/name-agent"
+import {
+  getDisplayName,
+  getRecentMessages,
+  persistMessage,
+  updateDisplayName,
+} from "@/lib/face-db"
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -15,13 +22,14 @@ const openai = new OpenAI({
 // In-memory conversation storage (in production, use a database)
 const conversations = new Map<string, Array<{ role: "user" | "assistant" | "system"; content: string }>>()
 
-// Build dynamic system prompt based on mood, trend, lifecycle, and optional wallet balance context
+// Build dynamic system prompt based on mood, trend, lifecycle, wallet balance, and weather context
 function buildSystemPrompt(
   mood?: string,
   trend?: string,
   lifecycleStage?: string,
   hasVision: boolean = false,
-  walletBalanceContext?: string
+  walletBalanceContext?: string,
+  weatherContext?: string
 ): string {
   const isAngry = mood === "angry" || (trend === "down" && mood !== "depressed")
   const isDepressed = mood === "depressed"
@@ -43,13 +51,24 @@ ${walletBalanceContext}
 `
     : ""
 
-  if (!mood && !trend && !lifecycleStage && !hasVision && !walletBalanceContext) {
-    return otterSoulConfig.systemPrompt + (walletBlock || "")
+  const weatherBlock = weatherContext
+    ? `
+
+## Weather and prices (you feel and know this)
+${weatherContext}
+- You have the prices and percentages above. You may mention them when relevant (e.g. "DEGEN is up 3%", "BTC's down so the wind's picking up", "ETH fog is cold today").
+- Reference the weather naturally (wind = BTC, fog = ETH). Keep it short and in character.
+`
+    : ""
+
+  if (!mood && !trend && !lifecycleStage && !hasVision && !walletBalanceContext && !weatherContext) {
+    return otterSoulConfig.systemPrompt + (walletBlock || "") + (weatherBlock || "")
   }
 
   return `
 ${otterSoulConfig.systemPrompt}
 ${walletBlock}
+${weatherBlock}
 
 ## Current State
 - **Age Stage**: ${(lifecycleStage || 'adult').toUpperCase()}
@@ -84,7 +103,17 @@ ${!isAngry && !isDepressed && !isPositiveMood ? "- Be chill and conversational."
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, conversationId, mood, trend, lifecycleStage, frameData } = await request.json()
+    const { message, conversationId, mood, trend, lifecycleStage, frameData, userId, weatherContext } =
+      await request.json() as {
+        message: string
+        conversationId: string
+        mood?: string
+        trend?: string
+        lifecycleStage?: string
+        frameData?: string
+        userId?: string
+        weatherContext?: string
+      }
 
     if (!process.env.OPENAI_API_KEY) {
       return new Response(
@@ -93,15 +122,31 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get or create conversation history
-    const conversationHistory = conversations.get(conversationId) || [
-      {
-        role: "system" as const,
-        content: otterSoulConfig.systemPrompt,
-      },
-    ]
-
     const hasVision = !!(frameData && typeof frameData === "string")
+    let conversationHistory: Array<{ role: "user" | "assistant" | "system"; content: string | unknown }>
+    let displayNameAtStart: string | null = null
+
+    if (userId && conversationId) {
+      try {
+        displayNameAtStart = await getDisplayName(userId)
+        const dbMessages = await getRecentMessages(conversationId, 30)
+        conversationHistory = [
+          { role: "system" as const, content: otterSoulConfig.systemPrompt },
+          ...dbMessages.map((m) => ({ role: m.role, content: m.content })),
+        ]
+      } catch {
+        conversationHistory = [
+          { role: "system" as const, content: otterSoulConfig.systemPrompt },
+        ]
+      }
+    } else {
+      conversationHistory = conversations.get(conversationId) || [
+        {
+          role: "system" as const,
+          content: otterSoulConfig.systemPrompt,
+        },
+      ]
+    }
 
     // When user explicitly mentions a Solana wallet, fetch $DEGEN balance and add to context for the LLM
     let walletBalanceContext: string | undefined
@@ -112,7 +157,13 @@ export async function POST(request: NextRequest) {
       if (balanceResult) walletBalanceContext = formatWalletBalanceForContext(balanceResult)
     }
 
-    conversationHistory[0].content = buildSystemPrompt(mood, trend, lifecycleStage, hasVision, walletBalanceContext)
+    const nameLine = userId
+      ? displayNameAtStart
+        ? `\n\nThe user's name is ${displayNameAtStart}. Use it naturally.`
+        : "\n\nYou don't know the user's name yet. Ask naturally once."
+      : ""
+    conversationHistory[0].content =
+      buildSystemPrompt(mood, trend, lifecycleStage, hasVision, walletBalanceContext, weatherContext) + nameLine
 
     // Build user message, optionally including a single camera frame
     if (frameData && typeof frameData === "string") {
@@ -171,8 +222,33 @@ export async function POST(request: NextRequest) {
             conversationHistory.splice(1, conversationHistory.length - 20)
           }
 
-          // Store updated conversation
+          // Store updated conversation (in-memory when no userId)
           conversations.set(conversationId, conversationHistory)
+
+          // Persist to DB and run NameAgent when userId is set
+          if (userId && conversationId) {
+            try {
+              await persistMessage(conversationId, "user", userMessageText)
+              await persistMessage(conversationId, "assistant", fullResponse)
+              if (displayNameAtStart === null) {
+                const recentTurns = conversationHistory
+                  .slice(1)
+                  .filter((m): m is { role: "user" | "assistant"; content: string } => m.role !== "system" && typeof m.content === "string")
+                  .slice(-6)
+                const nameResult = await detectName(userMessageText, recentTurns)
+                if (nameResult.nameProvided && nameResult.name) {
+                  await updateDisplayName(userId, nameResult.name)
+                  const nameStoredData = JSON.stringify({
+                    type: "name_stored",
+                    name: nameResult.name,
+                  })
+                  controller.enqueue(encoder.encode(`data: ${nameStoredData}\n\n`))
+                }
+              }
+            } catch (e) {
+              console.warn("Face persistence/NameAgent error:", e)
+            }
+          }
 
           // Send done event
           const doneData = JSON.stringify({ type: "done", content: fullResponse })

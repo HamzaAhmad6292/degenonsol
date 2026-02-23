@@ -176,6 +176,195 @@
   }
 }
 
+/* Weather overlay: wind (BTC) — horizontal drift */
+@keyframes wind-drift {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* Wind particles: curved path (0/25/50/75/100%) + leaf skew for natural motion */
+@keyframes wind-leaf {
+  0% {
+    transform: translate(100vw, 0) rotate(0deg) skew(-5deg, 2deg);
+    opacity: 0;
+  }
+  5% {
+    opacity: 0.7;
+  }
+  25% {
+    transform: translate(65vw, 4vh) rotate(45deg) skew(-5deg, 2deg);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translate(35vw, -2vh) rotate(90deg) skew(-5deg, 2deg);
+    opacity: 0.5;
+  }
+  75% {
+    transform: translate(5vw, 6vh) rotate(135deg) skew(-5deg, 2deg);
+    opacity: 0.4;
+  }
+  95% {
+    opacity: 0.35;
+  }
+  100% {
+    transform: translate(-15vw, 8vh) rotate(180deg) skew(-5deg, 2deg);
+    opacity: 0;
+  }
+}
+
+@keyframes wind-leaf-alt {
+  0% {
+    transform: translate(100vw, 8vh) rotate(-5deg) skew(-5deg, 2deg);
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.6;
+  }
+  25% {
+    transform: translate(70vw, 2vh) rotate(-50deg) skew(-5deg, 2deg);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translate(40vw, 8vh) rotate(-95deg) skew(-5deg, 2deg);
+    opacity: 0.45;
+  }
+  75% {
+    transform: translate(10vw, 2vh) rotate(-140deg) skew(-5deg, 2deg);
+    opacity: 0.35;
+  }
+  92% {
+    opacity: 0.25;
+  }
+  100% {
+    transform: translate(-20vw, -4vh) rotate(-185deg) skew(-5deg, 2deg);
+    opacity: 0;
+  }
+}
+
+/* Fog / mist patches: slow drift (transform only; opacity from fog-breathe) */
+@keyframes fog-drift {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(8vw, -3vh) scale(1.1);
+  }
+  100% {
+    transform: translate(-5vw, 4vh) scale(0.95);
+  }
+}
+
+@keyframes fog-drift-slow {
+  0% {
+    transform: translate(-10vw, 5vh) scale(1);
+  }
+  50% {
+    transform: translate(6vw, -2vh) scale(1.15);
+  }
+  100% {
+    transform: translate(-8vw, 3vh) scale(1);
+  }
+}
+
+/* Fog breathing: opacity only, long duration for living-fog feel */
+@keyframes fog-breathe {
+  0%, 100% {
+    opacity: 0.2;
+  }
+  22% {
+    opacity: 0.5;
+  }
+  40% {
+    opacity: 0.28;
+  }
+  62% {
+    opacity: 0.48;
+  }
+  80% {
+    opacity: 0.22;
+  }
+}
+
+/* Seamless horizontal strip loop (two 50% divs, translateX -50% on wrapper) */
+@keyframes fog-strip-loop {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+/* Rain (DEGEN dumping): fall across viewport with slight angle */
+@keyframes rain-fall {
+  0% {
+    transform: translate(0, 0) translateZ(0);
+    opacity: 0.7;
+  }
+  100% {
+    transform: translate(2vw, 110vh) translateZ(0);
+    opacity: 0.4;
+  }
+}
+
+/* Sunrise: gentle sun glow pulse when token is rising (medium/high intensity) — opacity only so element scale stays */
+@keyframes sunrise-sun-pulse {
+  0%, 100% {
+    opacity: 0.88;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Flowers: gentle float/sway when token is rising (tier 2+) */
+@keyframes flower-float {
+  0%, 100% {
+    transform: translateY(0) translateX(0);
+    opacity: 0.85;
+  }
+  25% {
+    transform: translateY(-4px) translateX(3px);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-2px) translateX(-2px);
+    opacity: 0.9;
+  }
+  75% {
+    transform: translateY(-5px) translateX(2px);
+    opacity: 0.95;
+  }
+}
+
+/* Warm temperature glow (ETH up) — gentle pulse */
+@keyframes temp-glow-warm {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.05);
+  }
+}
+
+/* Cold mist (ETH down) — subtle shift */
+@keyframes temp-glow-cold {
+  0%, 100% {
+    opacity: 0.45;
+    transform: scale(1.02);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.08);
+  }
+}
+
 .animate-float {
   animation: float 3s ease-in-out infinite;
 }

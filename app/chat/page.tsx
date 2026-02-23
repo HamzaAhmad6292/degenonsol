@@ -10,7 +10,20 @@ import { ArrowLeft } from "lucide-react"
 import { ArOtterView } from "@/components/ar-otter-view"
 import { type Sentiment } from "@/lib/sentiment-analyzer"
 import { useTokenPrice } from "@/components/token-price-fetcher"
+import { useBtcEthPrices } from "@/hooks/use-btc-eth-prices"
+import { buildWeatherSummary } from "@/lib/weather-summary"
 import { getLifecycleStage, type LifecycleInfo } from "@/lib/lifecycle"
+import { captureCurrentCameraFrame } from "@/lib/camera-frame"
+
+export interface IdentityState {
+  userId: string | null
+  displayName: string | null
+  conversationId: string | null
+  isNewUser: boolean
+  sessionReady: boolean
+  recentMessages: { role: "user" | "assistant"; content: string; created_at?: string }[]
+  greeting: string | null
+}
 
 // Extended GIF state type to include intensity levels and interactive GIFs
 export type GifState = "happy" | "sad" | "idle" | "sad_idle" | "happy_idle_2" | "happy_idle_3" | "sad_idle_2" | "sad_idle_3" | "lower50" | "upper50" | "slap"
@@ -58,6 +71,7 @@ export default function ChatPage() {
 
   // Lifted state for price and mood
   const { priceData } = useTokenPrice(5000)
+  const { layers: weatherLayers } = useBtcEthPrices(10_000)
   const [gifState, setGifState] = useState<GifState>("idle")
   const [selectedInterval, setSelectedInterval] = useState<"m5" | "h1" | "h24">("m5")
 
@@ -66,6 +80,70 @@ export default function ChatPage() {
   const [previousGifState, setPreviousGifState] = useState<GifState>("idle")
   const [arOpen, setArOpen] = useState(false)
   const [cameraOpen, setCameraOpen] = useState(false)
+  const [faceServiceUnavailable, setFaceServiceUnavailable] = useState(false)
+
+  const [identity, setIdentity] = useState<IdentityState>({
+    userId: null,
+    displayName: null,
+    conversationId: null,
+    isNewUser: false,
+    sessionReady: false,
+    recentMessages: [],
+    greeting: null,
+  })
+  const faceSessionStartedRef = useRef(false)
+
+  // When camera is on, try face session: retry capture a few times (video may not be ready immediately)
+  useEffect(() => {
+    if (!cameraOpen || identity.sessionReady || faceSessionStartedRef.current) return
+    setFaceServiceUnavailable(false)
+    const delays = [1500, 2500, 3500, 4500]
+    const timeouts: ReturnType<typeof setTimeout>[] = []
+    let attemptInProgress = false
+    const runAttempt = async () => {
+      if (attemptInProgress) return
+      attemptInProgress = true
+      const frame = await captureCurrentCameraFrame()
+      if (!frame) {
+        attemptInProgress = false
+        return
+      }
+      faceSessionStartedRef.current = true
+      timeouts.forEach(clearTimeout)
+      try {
+        const res = await fetch("/api/face/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ frameData: frame }),
+        })
+        const data = await res.json()
+        if (data.status === "face_service_unavailable") {
+          setFaceServiceUnavailable(true)
+          return
+        }
+        if (data.status === "no_face" || !data.userId) return
+        setIdentity({
+          userId: data.userId,
+          displayName: data.displayName ?? null,
+          conversationId: data.conversationId,
+          isNewUser: data.isNewUser ?? false,
+          sessionReady: true,
+          recentMessages: Array.isArray(data.recentMessages) ? data.recentMessages : [],
+          greeting: data.greeting ?? null,
+        })
+      } catch {
+        faceSessionStartedRef.current = false
+      }
+    }
+    delays.forEach((delay) => {
+      timeouts.push(setTimeout(runAttempt, delay))
+    })
+    return () => timeouts.forEach(clearTimeout)
+  }, [cameraOpen, identity.sessionReady])
+
+  useEffect(() => {
+    if (!cameraOpen) setFaceServiceUnavailable(false)
+  }, [cameraOpen])
 
   // Set lifecycle once on mount (time-of-day fallback until server start is fetched)
   useEffect(() => {
@@ -108,6 +186,13 @@ export default function ChatPage() {
     : intervalChange < 0
     ? "down"
     : "neutral"
+
+  // Weather + price summary for system prompt so otter has full context
+  const weatherContext = buildWeatherSummary(trend, weatherLayers, {
+    price: priceData.price,
+    changePercent: intervalChange,
+    interval: selectedInterval,
+  })
 
   // Determine if we're in an "angry" state (negative sentiment OR negative price)
   const isAngry = chatSentiment === "negative" || intervalChange < 0
@@ -204,6 +289,7 @@ export default function ChatPage() {
           }
         }}
         lifecycle={lifecycle}
+        weatherLayers={weatherLayers}
       />
 
       {/* Navigation — same base as page so no black bar */}
@@ -264,6 +350,10 @@ export default function ChatPage() {
         cameraOpen={cameraOpen}
         onCameraToggle={() => setCameraOpen((prev) => !prev)}
         onArOpen={() => setArOpen(true)}
+        identity={identity}
+        onIdentityChange={setIdentity}
+        weatherContext={weatherContext}
+        faceServiceUnavailable={faceServiceUnavailable}
       />
     </main>
   )

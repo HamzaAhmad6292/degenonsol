@@ -11,13 +11,17 @@ interface StreamingMessage {
   content: string
   timestamp: Date
   isStreaming?: boolean
+  /** Rendered as a bar/label separating previous conversation from current */
+  isHistorySeparator?: boolean
 }
 
 interface UseStreamingChatOptions {
   conversationId: string
+  userId?: string | null
   enableTTS?: boolean
   onSpeakingStart?: () => void
   onSpeakingEnd?: () => void
+  onNameStored?: (name: string) => void
   isMuted?: boolean
   lifecycle?: LifecycleInfo
 }
@@ -27,8 +31,10 @@ interface UseStreamingChatReturn {
   streamingContent: string
   isLoading: boolean
   isSpeaking: boolean
-  sendMessage: (message: string, mood?: string, trend?: string) => Promise<void>
+  sendMessage: (message: string, mood?: string, trend?: string, weatherContext?: string) => Promise<void>
   clearMessages: () => void
+  /** Call when face session returns: seed recent messages and append greeting, then play greeting via TTS */
+  seedFromFaceSession: (recentMessages: { role: string; content: string; created_at?: string }[], greeting: string) => void
 }
 
 /**
@@ -249,9 +255,11 @@ class TTSPipeline {
 
 export function useStreamingChat({
   conversationId,
+  userId = null,
   enableTTS = true,
   onSpeakingStart,
   onSpeakingEnd,
+  onNameStored,
   isMuted = false,
   lifecycle,
 }: UseStreamingChatOptions): UseStreamingChatReturn {
@@ -301,7 +309,7 @@ export function useStreamingChat({
   }, [getAudioQueue])
 
   // Send message with true streaming TTS
-  const sendMessage = useCallback(async (message: string, mood?: string, trend?: string) => {
+  const sendMessage = useCallback(async (message: string, mood?: string, trend?: string, weatherContext?: string) => {
     if (!message.trim() || isLoading) return
 
     // Cancel any ongoing stream
@@ -339,10 +347,12 @@ export function useStreamingChat({
         body: JSON.stringify({
           message: message.trim(),
           conversationId,
+          userId: userId ?? undefined,
           mood,
           trend,
           lifecycleStage: lifecycle?.stage,
           frameData,
+          weatherContext,
         }),
         signal: abortControllerRef.current.signal,
       })
@@ -401,6 +411,8 @@ export function useStreamingChat({
                 timestamp: new Date(),
               }])
               setStreamingContent("")
+            } else if (data.type === "name_stored" && data.name) {
+              onNameStored?.(data.name)
             } else if (data.type === "error") {
               throw new Error(data.error)
             }
@@ -423,7 +435,40 @@ export function useStreamingChat({
     } finally {
       setIsLoading(false)
     }
-  }, [isLoading, conversationId, enableTTS, isMuted, getTTSPipeline, getAudioQueue])
+  }, [isLoading, conversationId, userId, enableTTS, isMuted, getTTSPipeline, getAudioQueue])
+
+  const seedFromFaceSession = useCallback(
+    (recentMessages: { role: string; content: string; created_at?: string }[], greeting: string) => {
+      const seed: StreamingMessage[] = recentMessages.map((m, i) => ({
+        id: `face-${i}`,
+        role: m.role as "user" | "assistant",
+        content: m.content,
+        timestamp: m.created_at ? new Date(m.created_at) : new Date(),
+      }))
+      const separator: StreamingMessage = {
+        id: "history-separator",
+        role: "assistant",
+        content: "",
+        timestamp: new Date(),
+        isHistorySeparator: true,
+      }
+      const greetingMsg: StreamingMessage = {
+        id: `face-greeting-${Date.now()}`,
+        role: "assistant",
+        content: greeting,
+        timestamp: new Date(),
+      }
+      setMessages([...seed, separator, greetingMsg])
+      setStreamingContent("")
+      const ttsPipeline = getTTSPipeline()
+      ttsPipeline.clear()
+      ttsPipeline.configure("neutral", isMuted, enableTTS, lifecycle?.stage)
+      getAudioQueue().clear()
+      ttsPipeline.queuePhrase(greeting)
+      ttsPipeline.waitForCompletion().then(() => getAudioQueue().finishStreaming())
+    },
+    [getTTSPipeline, getAudioQueue, isMuted, enableTTS, lifecycle?.stage]
+  )
 
   // Clear messages
   const clearMessages = useCallback(() => {
@@ -445,5 +490,6 @@ export function useStreamingChat({
     isSpeaking,
     sendMessage,
     clearMessages,
+    seedFromFaceSession,
   }
 }
