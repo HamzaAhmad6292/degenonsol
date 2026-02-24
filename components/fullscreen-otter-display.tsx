@@ -55,7 +55,7 @@ interface FullscreenOtterDisplayProps {
   onIntervalChange: (interval: "m5" | "h1" | "h24") => void
   onOtterClick?: (gif: OneShotGif) => void
   lifecycle: LifecycleInfo
-  /** BTC/ETH layer state for wind and fog overlays */
+  /** BTC atmospheric layer state for wind + sky/fog overlays */
   weatherLayers?: WeatherLayersState
 }
 
@@ -194,6 +194,39 @@ export function FullscreenOtterDisplay({
                       isHappyIntensity ? intensityColors.happy : 
                       intensityColors.neutral
 
+  const selectedIntervalLabel =
+    selectedInterval === "m5" ? "5M" : selectedInterval === "h1" ? "1H" : "24H"
+
+  const intensityTier = getIntensityTier(priceChangePercent)
+  const macroSkyTrend = weatherLayers?.btc?.trend ?? trend
+  const skyPreset =
+    macroSkyTrend === "down"
+      ? {
+          top: "rgb(18, 28, 48)",
+          mid: "rgb(52, 78, 112)",
+          horizon: "rgb(156, 176, 194)",
+          low: "rgb(84, 98, 108)",
+          cloud: "rgba(210, 220, 235, 0.22)",
+          haze: "rgba(210, 225, 255, 0.12)",
+        }
+      : macroSkyTrend === "up"
+        ? {
+            top: "rgb(38, 108, 255)",
+            mid: "rgb(118, 214, 255)",
+            horizon: "rgb(255, 228, 184)",
+            low: "rgb(200, 238, 255)",
+            cloud: "rgba(255, 255, 255, 0.28)",
+            haze: "rgba(255, 255, 255, 0.14)",
+          }
+        : {
+            top: "rgb(40, 120, 255)",
+            mid: "rgb(128, 224, 255)",
+            horizon: "rgb(235, 245, 255)",
+            low: "rgb(190, 235, 255)",
+            cloud: "rgba(255, 255, 255, 0.22)",
+            haze: "rgba(255, 255, 255, 0.1)",
+          }
+
   // Determine GIF path based on lifecycle stage
   let gifPath = `/gifs/${gifState}.gif`
   
@@ -231,20 +264,44 @@ export function FullscreenOtterDisplay({
 
   return (
     <div className="fixed inset-0 w-full h-screen overflow-hidden">
-      {/* Background — trend tint (red/green/neutral) blends into same neutral base as navbar */}
+      {/* Background — real sky base + subtle trend tint; keeps chart readable */}
       <div 
         className="absolute inset-0 transition-all duration-1000 ease-in-out z-0"
         style={{
-          background: `linear-gradient(135deg, ${
-            trend === "up"
-              ? "rgba(34, 197, 94, 0.18)"
-              : trend === "down"
-              ? "rgba(239, 68, 68, 0.2)"
-              : "rgba(255, 255, 255, 0.06)"
-          } 0%, var(--chat-page-bg) 100%)`,
-          boxShadow: `0 0 80px ${glowColor}`,
+          background: `
+            radial-gradient(ellipse 90% 55% at 50% 12%, ${
+              macroSkyTrend === "up"
+                ? "rgba(255, 210, 140, 0.45)"
+                : macroSkyTrend === "down"
+                  ? "rgba(110, 130, 160, 0.25)"
+                  : "rgba(255, 255, 255, 0.18)"
+            } 0%, transparent 60%),
+            radial-gradient(ellipse 140% 80% at 50% -10%, ${skyPreset.haze} 0%, transparent 70%),
+            linear-gradient(to bottom, ${skyPreset.top} 0%, ${skyPreset.mid} 42%, ${skyPreset.horizon} 72%, ${skyPreset.low} 100%)
+          `,
+          boxShadow: `0 0 70px ${glowColor}`,
         }}
       >
+        {/* Sky cloud haze — subtle drift so the background feels alive */}
+        <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+          <div
+            className="absolute -inset-[35%]"
+            style={{
+              opacity: macroSkyTrend === "down" ? 0.42 : 0.34,
+              background: `
+                radial-gradient(ellipse 30% 16% at 18% 22%, ${skyPreset.cloud} 0%, transparent 62%),
+                radial-gradient(ellipse 34% 18% at 70% 16%, ${skyPreset.cloud} 0%, transparent 64%),
+                radial-gradient(ellipse 42% 20% at 46% 30%, ${skyPreset.cloud} 0%, transparent 66%),
+                radial-gradient(ellipse 36% 18% at 82% 34%, ${skyPreset.cloud} 0%, transparent 68%),
+                radial-gradient(ellipse 40% 18% at 10% 38%, ${skyPreset.cloud} 0%, transparent 70%)
+              `,
+              filter: "blur(26px)",
+              willChange: "transform",
+              animation: "sky-cloud-drift 58s ease-in-out infinite",
+            }}
+          />
+        </div>
+
         {/* Forest background — silhouettes and ground so it doesn't feel empty */}
         <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
           {/* Ground / horizon gradient */}
@@ -254,63 +311,165 @@ export function FullscreenOtterDisplay({
               background: "linear-gradient(to top, rgba(15, 35, 25, 0.5) 0%, rgba(20, 45, 35, 0.2) 25%, transparent 70%)",
             }}
           />
-          {/* Back layer — distant pines (small, faint) */}
+          {/* Distant tree-line haze to avoid mountain look */}
+          <div
+            className="absolute inset-x-0 bottom-[16%] h-[18%]"
+            style={{
+              background:
+                "radial-gradient(ellipse 120% 90% at 50% 100%, rgba(14, 36, 24, 0.42) 0%, rgba(10, 25, 18, 0.24) 54%, transparent 78%)",
+              filter: "blur(3px)",
+            }}
+          />
+          {/* Back layer — smaller conifer clusters */}
           {[
-            { left: "2%", width: "18%", height: "35%", opacity: 0.22 },
-            { left: "22%", width: "14%", height: "28%", opacity: 0.18 },
-            { left: "45%", width: "20%", height: "38%", opacity: 0.2 },
-            { left: "68%", width: "16%", height: "32%", opacity: 0.19 },
-            { left: "85%", width: "15%", height: "30%", opacity: 0.21 },
-          ].map((t, i) => (
+            { left: "2%", canopy: 4.8, height: 32, opacity: 0.28 },
+            { left: "13%", canopy: 4.1, height: 28, opacity: 0.24 },
+            { left: "25%", canopy: 4.6, height: 31, opacity: 0.26 },
+            { left: "39%", canopy: 4.3, height: 29, opacity: 0.25 },
+            { left: "52%", canopy: 5, height: 33, opacity: 0.27 },
+            { left: "67%", canopy: 4.2, height: 30, opacity: 0.24 },
+            { left: "80%", canopy: 4.7, height: 32, opacity: 0.26 },
+            { left: "91%", canopy: 4.1, height: 28, opacity: 0.23 },
+          ].map((tree, i) => (
             <div
-              key={`pine-b-${i}`}
-              className="absolute bottom-0"
+              key={`tree-back-${i}`}
+              className="absolute bottom-[12%]"
               style={{
-                left: t.left,
-                width: t.width,
-                height: t.height,
-                opacity: t.opacity,
-                clipPath: "polygon(50% 0%, 100% 100%, 0% 100%)",
-                background: "linear-gradient(180deg, rgba(10, 30, 22, 0.9) 0%, rgba(8, 22, 16, 0.95) 100%)",
+                left: tree.left,
+                width: `clamp(22px, ${tree.canopy}vw, 62px)`,
+                height: `clamp(84px, ${tree.height}vh, 185px)`,
+                opacity: tree.opacity,
               }}
-            />
+            >
+              <div
+                className="absolute left-1/2 bottom-0 -translate-x-1/2 rounded-sm"
+                style={{
+                  width: "clamp(3px, 0.45vw, 7px)",
+                  height: "28%",
+                  background: "linear-gradient(180deg, rgba(36, 27, 18, 0.65) 0%, rgba(22, 16, 10, 0.82) 100%)",
+                }}
+              />
+              <div
+                className="absolute left-1/2 -translate-x-1/2 rounded-full"
+                style={{
+                  bottom: "22%",
+                  width: "100%",
+                  height: "33%",
+                  background:
+                    "radial-gradient(ellipse 85% 70% at 50% 70%, rgba(16, 44, 30, 0.95) 0%, rgba(8, 24, 17, 0.9) 100%)",
+                }}
+              />
+              <div
+                className="absolute left-1/2 -translate-x-1/2 rounded-full"
+                style={{
+                  bottom: "44%",
+                  width: "82%",
+                  height: "29%",
+                  background:
+                    "radial-gradient(ellipse 85% 70% at 50% 70%, rgba(17, 48, 32, 0.9) 0%, rgba(9, 26, 18, 0.88) 100%)",
+                }}
+              />
+              <div
+                className="absolute left-1/2 -translate-x-1/2 rounded-full"
+                style={{
+                  bottom: "65%",
+                  width: "63%",
+                  height: "25%",
+                  background:
+                    "radial-gradient(ellipse 85% 70% at 50% 75%, rgba(20, 54, 36, 0.82) 0%, rgba(10, 29, 20, 0.84) 100%)",
+                }}
+              />
+            </div>
           ))}
-          {/* Mid layer — taller pines */}
+          {/* Mid layer — broader canopy trees */}
           {[
-            { left: "8%", width: "22%", height: "48%", opacity: 0.28 },
-            { left: "35%", width: "18%", height: "42%", opacity: 0.25 },
-            { left: "58%", width: "24%", height: "52%", opacity: 0.26 },
-            { left: "78%", width: "20%", height: "45%", opacity: 0.27 },
-          ].map((t, i) => (
+            { left: "-2%", canopy: 7.8, height: 40, opacity: 0.34 },
+            { left: "10%", canopy: 6.9, height: 38, opacity: 0.31 },
+            { left: "24%", canopy: 8.3, height: 42, opacity: 0.35 },
+            { left: "39%", canopy: 7.1, height: 39, opacity: 0.32 },
+            { left: "55%", canopy: 8.8, height: 43, opacity: 0.36 },
+            { left: "72%", canopy: 7.5, height: 40, opacity: 0.33 },
+            { left: "87%", canopy: 7.9, height: 41, opacity: 0.34 },
+          ].map((tree, i) => (
             <div
-              key={`pine-m-${i}`}
-              className="absolute bottom-0"
+              key={`tree-mid-${i}`}
+              className="absolute bottom-[4%]"
               style={{
-                left: t.left,
-                width: t.width,
-                height: t.height,
-                opacity: t.opacity,
-                clipPath: "polygon(50% 0%, 100% 100%, 0% 100%)",
-                background: "linear-gradient(180deg, rgba(12, 28, 20, 0.85) 0%, rgba(6, 18, 12, 0.9) 100%)",
+                left: tree.left,
+                width: `clamp(36px, ${tree.canopy}vw, 105px)`,
+                height: `clamp(108px, ${tree.height}vh, 235px)`,
+                opacity: tree.opacity,
               }}
-            />
+            >
+              <div
+                className="absolute left-1/2 bottom-0 -translate-x-1/2 rounded-sm"
+                style={{
+                  width: "clamp(4px, 0.6vw, 10px)",
+                  height: "26%",
+                  background: "linear-gradient(180deg, rgba(45, 34, 22, 0.75) 0%, rgba(22, 16, 11, 0.9) 100%)",
+                }}
+              />
+              <div
+                className="absolute left-1/2 -translate-x-1/2 rounded-full"
+                style={{
+                  bottom: "20%",
+                  width: "100%",
+                  height: "35%",
+                  background:
+                    "radial-gradient(ellipse 90% 75% at 50% 72%, rgba(18, 52, 34, 0.95) 0%, rgba(10, 30, 21, 0.92) 100%)",
+                }}
+              />
+              <div
+                className="absolute left-[44%] -translate-x-1/2 rounded-full"
+                style={{
+                  bottom: "45%",
+                  width: "72%",
+                  height: "30%",
+                  background:
+                    "radial-gradient(ellipse 88% 70% at 50% 72%, rgba(22, 58, 39, 0.92) 0%, rgba(11, 33, 23, 0.9) 100%)",
+                }}
+              />
+              <div
+                className="absolute left-[58%] -translate-x-1/2 rounded-full"
+                style={{
+                  bottom: "47%",
+                  width: "68%",
+                  height: "28%",
+                  background:
+                    "radial-gradient(ellipse 88% 70% at 50% 72%, rgba(20, 55, 37, 0.9) 0%, rgba(10, 31, 22, 0.88) 100%)",
+                }}
+              />
+              <div
+                className="absolute left-1/2 -translate-x-1/2 rounded-full"
+                style={{
+                  bottom: "66%",
+                  width: "56%",
+                  height: "22%",
+                  background:
+                    "radial-gradient(ellipse 84% 68% at 50% 75%, rgba(26, 65, 44, 0.84) 0%, rgba(12, 35, 24, 0.86) 100%)",
+                }}
+              />
+            </div>
           ))}
-          {/* Front layer — round foliage blobs for depth */}
+          {/* Front shrubs for depth and stronger forest floor */}
           {[
-            { left: "-5%", width: "28%", height: "22%", opacity: 0.2 },
-            { left: "25%", width: "20%", height: "18%", opacity: 0.18 },
-            { left: "52%", width: "26%", height: "24%", opacity: 0.22 },
-            { left: "82%", width: "24%", height: "20%", opacity: 0.19 },
-          ].map((t, i) => (
+            { left: "-8%", width: 26, height: 18, opacity: 0.28 },
+            { left: "14%", width: 22, height: 16, opacity: 0.24 },
+            { left: "36%", width: 27, height: 18, opacity: 0.3 },
+            { left: "60%", width: 24, height: 17, opacity: 0.27 },
+            { left: "82%", width: 28, height: 19, opacity: 0.29 },
+          ].map((shrub, i) => (
             <div
-              key={`blob-${i}`}
+              key={`shrub-${i}`}
               className="absolute bottom-0 rounded-full"
               style={{
-                left: t.left,
-                width: t.width,
-                height: t.height,
-                opacity: t.opacity,
-                background: "radial-gradient(ellipse 100% 100% at 50% 100%, rgba(18, 40, 28, 0.9) 0%, rgba(10, 25, 18, 0.7) 100%)",
+                left: shrub.left,
+                width: `clamp(120px, ${shrub.width}vw, 420px)`,
+                height: `clamp(64px, ${shrub.height}vh, 180px)`,
+                opacity: shrub.opacity,
+                background:
+                  "radial-gradient(ellipse 100% 100% at 50% 100%, rgba(17, 44, 30, 0.9) 0%, rgba(10, 27, 19, 0.76) 100%)",
+                filter: "blur(0.3px)",
               }}
             />
           ))}
@@ -379,11 +538,10 @@ export function FullscreenOtterDisplay({
 
         {/* Sunrise + sun when token is rising — intensity by same tiers as idle / happy_idle_2 / happy_idle_3 */}
         {trend === "up" && (() => {
-          const tier = getIntensityTier(priceChangePercent)
-          const sunriseOpacity = tier === 3 ? 0.85 : tier === 2 ? 0.6 : 0.35
-          const sunScale = tier === 3 ? 1 : tier === 2 ? 0.75 : 0.5
-          const showFlowers = tier >= 2
-          const flowerCount = tier === 3 ? 14 : 7
+          const sunriseOpacity = intensityTier === 3 ? 0.8 : intensityTier === 2 ? 0.6 : 0.42
+          const sunScale = intensityTier === 3 ? 1 : intensityTier === 2 ? 0.82 : 0.65
+          const showFlowers = intensityTier >= 2
+          const flowerCount = intensityTier === 3 ? 14 : 7
           return (
             <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
               {/* Sunrise gradient — horizon glow, warm orange → pink → transparent */}
@@ -392,23 +550,73 @@ export function FullscreenOtterDisplay({
                 style={{
                   opacity: sunriseOpacity,
                   background: `
-                    radial-gradient(ellipse 140% 90% at 50% 85%, rgba(255, 180, 100, 0.4) 0%, rgba(255, 140, 120, 0.25) 25%, rgba(255, 200, 180, 0.08) 50%, transparent 70%),
-                    linear-gradient(to top, rgba(255, 200, 150, 0.2) 0%, transparent 45%)
+                    radial-gradient(ellipse 160% 95% at 50% 88%, rgba(255, 190, 120, 0.45) 0%, rgba(255, 150, 120, 0.26) 22%, rgba(255, 220, 200, 0.1) 48%, transparent 72%),
+                    radial-gradient(ellipse 90% 55% at 50% 20%, rgba(255, 240, 210, 0.12) 0%, transparent 55%),
+                    linear-gradient(to top, rgba(255, 210, 160, 0.18) 0%, transparent 46%)
                   `,
                 }}
               />
-              {/* Sun disc — soft glow, subtle pulse at higher intensity */}
+              {/* Sun — bright warm disc + corona + subtle rays (so it reads as sun, not moon) */}
               <div
-                className="absolute left-1/2 top-[18%] -translate-x-1/2 rounded-full"
+                className="absolute left-1/2 top-[12%] -translate-x-1/2"
                 style={{
-                  width: `${Math.min(22, 14 + tier * 4)}vw`,
-                  height: `${Math.min(22, 14 + tier * 4)}vw`,
+                  width: `${Math.min(26, 16 + intensityTier * 4)}vw`,
+                  height: `${Math.min(26, 16 + intensityTier * 4)}vw`,
                   transform: `translate(-50%, 0) scale(${sunScale})`,
-                  background: "radial-gradient(circle at 30% 30%, rgba(255, 250, 220, 0.95) 0%, rgba(255, 230, 160, 0.9) 40%, rgba(255, 200, 100, 0.5) 70%, rgba(255, 180, 80, 0.2) 100%)",
-                  boxShadow: "0 0 80px 30px rgba(255, 200, 100, 0.4), 0 0 120px 50px rgba(255, 180, 80, 0.2)",
-                  animation: tier >= 2 ? "sunrise-sun-pulse 4s ease-in-out infinite" : undefined,
                 }}
-              />
+              >
+                {/* Rays */}
+                <div
+                  className="absolute rounded-full"
+                  style={{
+                    inset: "-35%",
+                    opacity: intensityTier === 3 ? 0.38 : intensityTier === 2 ? 0.26 : 0.18,
+                    background:
+                      "repeating-conic-gradient(from 0deg, rgba(255, 200, 90, 0.55) 0deg 10deg, rgba(255, 180, 70, 0) 10deg 22deg)",
+                    maskImage: "radial-gradient(circle, transparent 0% 38%, rgba(0,0,0,1) 55%, transparent 72%)",
+                    WebkitMaskImage:
+                      "radial-gradient(circle, transparent 0% 38%, rgba(0,0,0,1) 55%, transparent 72%)",
+                    filter: "blur(0.6px)",
+                    willChange: "transform",
+                    animation:
+                      intensityTier >= 2 ? "sun-rays-rotate 26s linear infinite" : "sun-rays-rotate 34s linear infinite",
+                  }}
+                />
+                {/* Outer glow */}
+                <div
+                  className="absolute rounded-full"
+                  style={{
+                    inset: "-22%",
+                    background:
+                      "radial-gradient(circle, rgba(255, 240, 200, 0.55) 0%, rgba(255, 195, 95, 0.34) 40%, rgba(255, 170, 70, 0.12) 70%, transparent 78%)",
+                    filter: "blur(10px)",
+                    animation: intensityTier >= 2 ? "sunrise-sun-pulse 4s ease-in-out infinite" : undefined,
+                  }}
+                />
+                {/* Disc */}
+                <div
+                  className="absolute inset-0 rounded-full"
+                  style={{
+                    background: `
+                      radial-gradient(circle at 34% 32%, rgba(255, 255, 245, 0.98) 0%, rgba(255, 245, 210, 0.95) 28%, rgba(255, 210, 120, 0.9) 55%, rgba(255, 170, 65, 0.75) 80%, rgba(255, 145, 55, 0.6) 100%),
+                      radial-gradient(circle at 65% 70%, rgba(255, 255, 255, 0.14) 0%, transparent 55%)
+                    `,
+                    boxShadow:
+                      "0 0 90px 28px rgba(255, 200, 100, 0.42), 0 0 160px 60px rgba(255, 165, 70, 0.22)",
+                  }}
+                />
+                {/* Core highlight */}
+                <div
+                  className="absolute rounded-full"
+                  style={{
+                    inset: "18%",
+                    background:
+                      "radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.9) 0%, rgba(255, 245, 210, 0.35) 55%, transparent 72%)",
+                    opacity: intensityTier === 3 ? 0.95 : 0.85,
+                    filter: "blur(0.5px)",
+                  }}
+                />
+              </div>
               {/* Flowers / petals — tier 2: few; tier 3: more, gentle float */}
               {showFlowers &&
                 Array.from({ length: flowerCount }, (_, i) => {
@@ -490,29 +698,29 @@ export function FullscreenOtterDisplay({
           )
         })()}
 
-        {/* Weather: fog / temperature (ETH) — drifting mist + breathing + optional strip */}
-        {weatherLayers?.eth && (() => {
-          const isWarm = weatherLayers.eth.trend === "up"
-          const isCold = weatherLayers.eth.trend === "down"
-          const fogOpacity = Math.max(0.5, Math.min(0.85, 0.5 + Math.abs(weatherLayers.eth.priceChangePercent) / 60))
+        {/* Weather: SOL local atmosphere — drifting fog + temperature tint */}
+        {weatherLayers?.sol && (() => {
+          const isClear = weatherLayers.sol.trend === "up"
+          const isStormy = weatherLayers.sol.trend === "down"
+          const fogOpacity = Math.max(0.45, Math.min(0.82, 0.45 + Math.abs(weatherLayers.sol.priceChangePercent) / 70))
           const patches = [
-            { size: "120vw 40vh", left: "5%", top: "10%", blur: 65, color: isWarm ? "rgba(255,200,120,0.25)" : isCold ? "rgba(140,180,255,0.22)" : "rgba(220,220,240,0.12)", anim: "fog-drift", dur: "25s", delay: "0s" },
-            { size: "80vw 35vh", left: "40%", top: "50%", blur: 55, color: isWarm ? "rgba(255,190,100,0.2)" : isCold ? "rgba(120,160,230,0.2)" : "rgba(200,210,230,0.1)", anim: "fog-drift-slow", dur: "32s", delay: "-8s" },
-            { size: "100vw 45vh", left: "60%", top: "20%", blur: 70, color: isWarm ? "rgba(255,210,130,0.18)" : isCold ? "rgba(100,150,220,0.18)" : "rgba(210,215,230,0.08)", anim: "fog-drift", dur: "28s", delay: "-15s" },
-            { size: "70vw 30vh", left: "15%", top: "60%", blur: 50, color: isWarm ? "rgba(255,180,90,0.22)" : isCold ? "rgba(130,170,240,0.2)" : "rgba(205,208,225,0.1)", anim: "fog-drift-slow", dur: "30s", delay: "-4s" },
+            { size: "120vw 40vh", left: "5%", top: "10%", blur: 65, color: isClear ? "rgba(255,225,170,0.2)" : isStormy ? "rgba(145,175,220,0.25)" : "rgba(220,230,245,0.13)", anim: "fog-drift", dur: "25s", delay: "0s" },
+            { size: "80vw 35vh", left: "40%", top: "50%", blur: 55, color: isClear ? "rgba(255,210,145,0.16)" : isStormy ? "rgba(125,160,210,0.22)" : "rgba(205,215,235,0.11)", anim: "fog-drift-slow", dur: "32s", delay: "-8s" },
+            { size: "100vw 45vh", left: "60%", top: "20%", blur: 70, color: isClear ? "rgba(255,232,185,0.15)" : isStormy ? "rgba(115,150,200,0.2)" : "rgba(215,220,238,0.09)", anim: "fog-drift", dur: "28s", delay: "-15s" },
+            { size: "70vw 30vh", left: "15%", top: "60%", blur: 50, color: isClear ? "rgba(255,215,160,0.18)" : isStormy ? "rgba(135,170,218,0.22)" : "rgba(205,210,228,0.1)", anim: "fog-drift-slow", dur: "30s", delay: "-4s" },
           ]
           return (
             <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-              {/* Base temperature glow — warm amber or cold blue */}
+              {/* Base sky pulse — clear amber vs storm-blue atmosphere */}
               <div
                 className="absolute inset-0"
                 style={{
-                  background: isWarm
-                    ? "radial-gradient(ellipse 120% 80% at 30% 20%, rgba(255,180,80,0.35) 0%, transparent 55%)"
-                    : isCold
-                      ? "radial-gradient(ellipse 100% 90% at 70% 80%, rgba(100,150,220,0.3) 0%, transparent 50%)"
-                      : "radial-gradient(ellipse 80% 60% at 50% 50%, rgba(200,200,220,0.12) 0%, transparent 60%)",
-                  animation: isWarm ? "temp-glow-warm 6s ease-in-out infinite" : isCold ? "temp-glow-cold 8s ease-in-out infinite" : "none",
+                  background: isClear
+                    ? "radial-gradient(ellipse 120% 80% at 30% 20%, rgba(255,205,120,0.28) 0%, transparent 55%)"
+                    : isStormy
+                      ? "radial-gradient(ellipse 100% 90% at 70% 80%, rgba(105,150,215,0.28) 0%, transparent 50%)"
+                      : "radial-gradient(ellipse 80% 60% at 50% 50%, rgba(208,218,236,0.12) 0%, transparent 60%)",
+                  animation: isClear ? "temp-glow-warm 6s ease-in-out infinite" : isStormy ? "temp-glow-cold 8s ease-in-out infinite" : "none",
                 }}
               />
               {/* Seamless loop ground mist strip */}
@@ -529,10 +737,10 @@ export function FullscreenOtterDisplay({
                   <div
                     className="w-1/2 h-full shrink-0 rounded-[50%]"
                     style={{
-                      background: isWarm
-                        ? "linear-gradient(180deg, transparent 0%, rgba(255,200,120,0.15) 40%, rgba(255,180,80,0.12) 100%)"
-                        : isCold
-                          ? "linear-gradient(180deg, transparent 0%, rgba(140,180,255,0.12) 40%, rgba(100,150,220,0.1) 100%)"
+                      background: isClear
+                        ? "linear-gradient(180deg, transparent 0%, rgba(255,214,145,0.13) 40%, rgba(255,194,120,0.11) 100%)"
+                        : isStormy
+                          ? "linear-gradient(180deg, transparent 0%, rgba(150,188,248,0.13) 40%, rgba(118,160,226,0.11) 100%)"
                           : "linear-gradient(180deg, transparent 0%, rgba(220,220,240,0.08) 100%)",
                       filter: "blur(40px)",
                     }}
@@ -540,10 +748,10 @@ export function FullscreenOtterDisplay({
                   <div
                     className="w-1/2 h-full shrink-0 rounded-[50%]"
                     style={{
-                      background: isWarm
-                        ? "linear-gradient(180deg, transparent 0%, rgba(255,200,120,0.15) 40%, rgba(255,180,80,0.12) 100%)"
-                        : isCold
-                          ? "linear-gradient(180deg, transparent 0%, rgba(140,180,255,0.12) 40%, rgba(100,150,220,0.1) 100%)"
+                      background: isClear
+                        ? "linear-gradient(180deg, transparent 0%, rgba(255,214,145,0.13) 40%, rgba(255,194,120,0.11) 100%)"
+                        : isStormy
+                          ? "linear-gradient(180deg, transparent 0%, rgba(150,188,248,0.13) 40%, rgba(118,160,226,0.11) 100%)"
                           : "linear-gradient(180deg, transparent 0%, rgba(220,220,240,0.08) 100%)",
                       filter: "blur(40px)",
                     }}
@@ -640,7 +848,7 @@ export function FullscreenOtterDisplay({
       </div>
 
       {/* Price Display - Top Right (smaller + higher on phone, higher z-index) */}
-      <div className="absolute top-6 right-2 md:top-6 md:right-6 z-[80] flex flex-col items-end gap-1.5 md:gap-2">
+      <div className="absolute top-6 right-2 md:top-6 md:right-6 z-80 flex flex-col items-end gap-1.5 md:gap-2">
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -688,14 +896,14 @@ export function FullscreenOtterDisplay({
         </motion.div>
 
         {/* Weather = market (same compact size + z as price card on phone) */}
-        {(weatherLayers?.btc || weatherLayers?.eth) && (
+        {(weatherLayers?.btc || weatherLayers?.sol) && (
           <motion.div
             initial={{ opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             className="bg-black/40 backdrop-blur-md rounded-lg px-1.5 py-1 md:px-2.5 md:py-1.5 border border-white/10 flex flex-col gap-0.5 text-[8px] md:text-xs max-w-[140px] md:max-w-none"
           >
             <p className="text-white/40 text-[8px] md:text-[10px] uppercase tracking-wider mb-0.5 leading-tight">
-              Wind=BTC 24h · Fog=ETH 24h
+              Weather Layers ({selectedIntervalLabel})
             </p>
             <div className="flex flex-wrap gap-x-2 md:gap-x-3 gap-y-0.5">
               {weatherLayers?.btc && (
@@ -706,11 +914,11 @@ export function FullscreenOtterDisplay({
                   </span>
                 </span>
               )}
-              {weatherLayers?.eth && (
+              {weatherLayers?.sol && (
                 <span className="text-white/90 text-[8px] md:text-xs">
-                  <span className="text-white/60 mr-0.5">ETH</span>
-                  <span className={weatherLayers.eth.trend === "up" ? "text-amber-400" : weatherLayers.eth.trend === "down" ? "text-sky-400" : "text-white/60"}>
-                    {weatherLayers.eth.trend === "up" ? "↑" : weatherLayers.eth.trend === "down" ? "↓" : "→"} {weatherLayers.eth.priceChangePercent.toFixed(1)}%
+                  <span className="text-white/60 mr-0.5">SOL</span>
+                  <span className={weatherLayers.sol.trend === "up" ? "text-amber-400" : weatherLayers.sol.trend === "down" ? "text-sky-400" : "text-white/60"}>
+                    {weatherLayers.sol.trend === "up" ? "↑" : weatherLayers.sol.trend === "down" ? "↓" : "→"} {weatherLayers.sol.priceChangePercent.toFixed(1)}%
                   </span>
                 </span>
               )}
@@ -743,7 +951,7 @@ export function FullscreenOtterDisplay({
               aria-valuemax={100}
             >
               <motion.div
-                className="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-500"
+                className="h-full rounded-full bg-linear-to-r from-amber-400 to-amber-500"
                 style={{ width: `${birthProgress * 100}%` }}
                 transition={{ duration: 0.2 }}
               />

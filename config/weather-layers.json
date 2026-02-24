@@ -24,8 +24,8 @@
       ]
     },
     {
-      "id": "eth",
-      "coinId": "ETH",
+      "id": "sol",
+      "coinId": "SOL",
       "name": "Temperature & Fog",
       "effect": "temp_fog",
       "visuals": {
@@ -34,9 +34,9 @@
         "tint": { "up": "rgba(255, 200, 100, 0.15)", "down": "rgba(100, 150, 255, 0.2)" }
       },
       "degenReactions": [
-        "Gas fees are high… I feel so energetic!",
-        "When ETH's cold, everything moves slow…",
-        "The fog's lifting. I can think again."
+        "Solana feels fast today, the fog is clearing!",
+        "SOL's cooling down, the mist is getting thicker…",
+        "Local chain weather feels spicy, I like it."
       ]
     }
   ]

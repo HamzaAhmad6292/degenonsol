@@ -35,20 +35,26 @@ export function buildWeatherSummary(
         : Math.abs(layers.btc.priceChangePercent) >= 0.5
           ? "wind"
           : "calm"
+    const skyMood =
+      layers.btc.trend === "up"
+        ? "clear sky with warm haze"
+        : layers.btc.trend === "down"
+          ? "thicker cloud-fog and cooler sky"
+          : "mixed clouds with light haze"
     parts.push(
-      `BTC (wind): ${layers.btc.priceChangePercent >= 0 ? "+" : ""}${layers.btc.priceChangePercent.toFixed(1)}% (24h), ${intensity}, ${layers.btc.trend}.`
+      `BTC (macro sky): ${layers.btc.priceChangePercent >= 0 ? "+" : ""}${layers.btc.priceChangePercent.toFixed(1)}% (${intervalLabel}), ${intensity}, ${skyMood}, ${layers.btc.trend}.`
     )
   }
 
-  if (layers.eth) {
-    const fog =
-      layers.eth.trend === "up"
-        ? "warm glow"
-        : layers.eth.trend === "down"
-          ? "cold fog"
-          : "neutral"
+  if (layers.sol) {
+    const localMood =
+      layers.sol.trend === "up"
+        ? "warmer local air and clearer fog"
+        : layers.sol.trend === "down"
+          ? "colder local air and thicker fog"
+          : "steady local air with light mist"
     parts.push(
-      `ETH (fog): ${layers.eth.priceChangePercent >= 0 ? "+" : ""}${layers.eth.priceChangePercent.toFixed(1)}% (24h), ${fog}, ${layers.eth.trend}.`
+      `SOL (local fog): ${layers.sol.priceChangePercent >= 0 ? "+" : ""}${layers.sol.priceChangePercent.toFixed(1)}% (${intervalLabel}), ${localMood}, ${layers.sol.trend}.`
     )
   }
 

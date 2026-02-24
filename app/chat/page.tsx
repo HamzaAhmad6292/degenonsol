@@ -70,10 +70,10 @@ export default function ChatPage() {
   serverStartTimeRef.current = serverStartTime
 
   // Lifted state for price and mood
-  const { priceData } = useTokenPrice(5000)
-  const { layers: weatherLayers } = useBtcEthPrices(10_000)
-  const [gifState, setGifState] = useState<GifState>("idle")
   const [selectedInterval, setSelectedInterval] = useState<"m5" | "h1" | "h24">("m5")
+  const { priceData } = useTokenPrice(5000)
+  const { layers: weatherLayers } = useBtcEthPrices(10_000, selectedInterval)
+  const [gifState, setGifState] = useState<GifState>("idle")
 
   // State for one-shot GIF playback
   const [oneShotGif, setOneShotGif] = useState<OneShotGif | null>(null)

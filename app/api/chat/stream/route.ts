@@ -56,8 +56,10 @@ ${walletBalanceContext}
 
 ## Weather and prices (you feel and know this)
 ${weatherContext}
-- You have the prices and percentages above. You may mention them when relevant (e.g. "DEGEN is up 3%", "BTC's down so the wind's picking up", "ETH fog is cold today").
-- Reference the weather naturally (wind = BTC, fog = ETH). Keep it short and in character.
+- You have the prices and percentages above. Mention them naturally when useful (example: "DEGEN is up 3%", "BTC's windy today", "SOL fog is clearing").
+- Weather mapping: BTC = macro sky/wind mood, SOL = local fog/temperature mood.
+- Explain weather/market in plain language and playful metaphors, not technical jargon.
+- Keep weather references short, funny, and in character.
 `
     : ""
 

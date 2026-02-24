@@ -1,7 +1,12 @@
 "use client"
 
 import { useEffect, useState, useRef } from "react"
-import type { LayerState, WeatherLayersState } from "@/lib/weather-types"
+import type {
+  LayerPriceChanges,
+  LayerState,
+  WeatherInterval,
+  WeatherLayersState,
+} from "@/lib/weather-types"
 
 /** Use our API proxy to avoid CORS (CoinGecko blocks direct browser requests). */
 const PRICES_API = "/api/weather/prices"
@@ -14,36 +19,63 @@ function trendFromChange(change: number): "up" | "down" | "neutral" {
   return "neutral"
 }
 
-function parseBtcEth(data: unknown): WeatherLayersState {
+const emptyChanges: LayerPriceChanges = {
+  m5: 0,
+  h1: 0,
+  h24: 0,
+}
+
+interface WeatherApiAsset {
+  id: "btc" | "sol"
+  priceUsd?: number
+  changes?: Partial<LayerPriceChanges>
+}
+
+interface WeatherApiResponse {
+  assets?: {
+    btc?: WeatherApiAsset
+    sol?: WeatherApiAsset
+  }
+}
+
+function parseWeatherLayers(data: unknown, selectedInterval: WeatherInterval): WeatherLayersState {
   const layers: WeatherLayersState = {}
   if (!data || typeof data !== "object") return layers
 
-  const btc = (data as Record<string, unknown>)["bitcoin"]
-  if (btc && typeof btc === "object" && "usd" in btc) {
-    const b = btc as Record<string, unknown>
-    const change = typeof b.usd_24h_change === "number" ? b.usd_24h_change : 0
-    layers.btc = {
-      id: "btc",
-      trend: trendFromChange(change),
-      priceChangePercent: change,
-    }
-  }
-
-  const eth = (data as Record<string, unknown>)["ethereum"]
-  if (eth && typeof eth === "object" && "usd" in eth) {
-    const e = eth as Record<string, unknown>
-    const change = typeof e.usd_24h_change === "number" ? e.usd_24h_change : 0
-    layers.eth = {
-      id: "eth",
-      trend: trendFromChange(change),
-      priceChangePercent: change,
-    }
-  }
+  const payload = data as WeatherApiResponse
+  layers.btc = buildLayerState(payload.assets?.btc, "btc", selectedInterval)
+  layers.sol = buildLayerState(payload.assets?.sol, "sol", selectedInterval)
 
   return layers
 }
 
-export function useBtcEthPrices(intervalMs: number = POLL_INTERVAL_MS): {
+function buildLayerState(
+  asset: WeatherApiAsset | undefined,
+  id: "btc" | "sol",
+  selectedInterval: WeatherInterval
+): LayerState | undefined {
+  if (!asset) return undefined
+  const rawChanges = asset.changes ?? {}
+  const priceChanges: LayerPriceChanges = {
+    m5: typeof rawChanges.m5 === "number" ? rawChanges.m5 : 0,
+    h1: typeof rawChanges.h1 === "number" ? rawChanges.h1 : 0,
+    h24: typeof rawChanges.h24 === "number" ? rawChanges.h24 : 0,
+  }
+  const selectedChange = priceChanges[selectedInterval]
+  return {
+    id,
+    trend: trendFromChange(selectedChange),
+    priceChangePercent: selectedChange,
+    priceUsd: typeof asset.priceUsd === "number" ? asset.priceUsd : 0,
+    priceChanges,
+    interval: selectedInterval,
+  }
+}
+
+export function useBtcEthPrices(
+  intervalMs: number = POLL_INTERVAL_MS,
+  selectedInterval: WeatherInterval = "m5"
+): {
   layers: WeatherLayersState
   loading: boolean
 } {
@@ -56,16 +88,16 @@ export function useBtcEthPrices(intervalMs: number = POLL_INTERVAL_MS): {
 
     const fetchPrices = async () => {
       try {
-        const res = await fetch(PRICES_API)
+        const res = await fetch(`${PRICES_API}?interval=${selectedInterval}`)
         if (!res.ok) {
           if (mountedRef.current) setLayers({})
           return
         }
         const data = await res.json()
         if (!mountedRef.current) return
-        setLayers(parseBtcEth(data))
+        setLayers(parseWeatherLayers(data, selectedInterval))
       } catch (err) {
-        console.error("Error fetching BTC/ETH prices:", err)
+        console.error("Error fetching BTC/SOL weather layers:", err)
         if (mountedRef.current) setLayers({})
       } finally {
         if (mountedRef.current) setLoading(false)
@@ -78,7 +110,7 @@ export function useBtcEthPrices(intervalMs: number = POLL_INTERVAL_MS): {
       mountedRef.current = false
       clearInterval(id)
     }
-  }, [intervalMs])
+  }, [intervalMs, selectedInterval])
 
   return { layers, loading }
 }

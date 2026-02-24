@@ -1,15 +1,25 @@
 /**
  * Weather system types for multi-coin layered effects.
- * Phase 1: main (DEGEN) + btc (wind) + eth (fog).
+ * Phase 1: main (DEGEN) + btc atmospheric layer (wind + sky/fog mood).
  */
 
 export type WeatherTrend = "up" | "down" | "neutral"
+export type WeatherInterval = "m5" | "h1" | "h24"
+
+export interface LayerPriceChanges {
+  m5: number
+  h1: number
+  h24: number
+}
 
 /** Runtime state for a single layer (from price data). */
 export interface LayerState {
-  id: string
+  id: "btc" | "sol"
   trend: WeatherTrend
   priceChangePercent: number
+  priceUsd?: number
+  priceChanges: LayerPriceChanges
+  interval: WeatherInterval
 }
 
 /** Visual config for a layer (from JSON). */
@@ -41,14 +51,14 @@ export interface MainWeatherConfig {
   tokenAddress: string
 }
 
-/** Full weather config (Phase 1: main + btc + eth layers). */
+/** Full weather config (Phase 1: main + btc atmospheric layer). */
 export interface WeatherConfig {
   mainWeather: MainWeatherConfig
   layers: WeatherLayerConfig[]
 }
 
-/** Typed layers for display (btc/eth only in Phase 1). */
+/** Typed layers for display (BTC macro + SOL local atmosphere). */
 export interface WeatherLayersState {
   btc?: LayerState
-  eth?: LayerState
+  sol?: LayerState
 }

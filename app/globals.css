@@ -311,6 +311,19 @@
   }
 }
 
+/* Sky background: very slow cloud haze drift (transform only) */
+@keyframes sky-cloud-drift {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-4vw, 2vh, 0) scale(1.03);
+  }
+  100% {
+    transform: translate3d(3vw, -2vh, 0) scale(1);
+  }
+}
+
 /* Sunrise: gentle sun glow pulse when token is rising (medium/high intensity) — opacity only so element scale stays */
 @keyframes sunrise-sun-pulse {
   0%, 100% {
@@ -318,6 +331,16 @@
   }
   50% {
     opacity: 1;
+  }
+}
+
+/* Sunrise sun: subtle rays rotation so it reads as "sun" */
+@keyframes sun-rays-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
 
