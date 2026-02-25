@@ -344,6 +344,16 @@
   }
 }
 
+/* Night sky: star twinkle */
+@keyframes star-twinkle {
+  0%, 100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 /* Flowers: gentle float/sway when token is rising (tier 2+) */
 @keyframes flower-float {
   0%, 100% {

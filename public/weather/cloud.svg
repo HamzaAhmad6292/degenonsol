@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 140" aria-hidden="true">
+  <defs>
+    <linearGradient id="cloudTop" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.98"/>
+      <stop offset="45%" stop-color="#f8fafc" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#e2e8f0" stop-opacity="0.88"/>
+    </linearGradient>
+    <linearGradient id="cloudUnderside" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#cbd5e1" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="transparent"/>
+    </linearGradient>
+    <filter id="cloudSoft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 1.2 0" result="lift"/>
+      <feMerge>
+        <feMergeNode in="lift"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="cloudShadow" x="-20%" y="-10%" width="140%" height="130%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#94a3b8" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+  <g filter="url(#cloudSoft)">
+    <g filter="url(#cloudShadow)">
+      <!-- Main cumulus puffs - overlapping for a single cloud mass -->
+      <ellipse cx="85" cy="85" rx="52" ry="32" fill="url(#cloudTop)"/>
+      <ellipse cx="155" cy="75" rx="58" ry="36" fill="url(#cloudTop)"/>
+      <ellipse cx="215" cy="88" rx="48" ry="30" fill="url(#cloudTop)"/>
+      <ellipse cx="120" cy="95" rx="42" ry="26" fill="url(#cloudTop)"/>
+      <ellipse cx="185" cy="92" rx="38" ry="24" fill="url(#cloudTop)"/>
+      <!-- Soft underside tint for volume -->
+      <ellipse cx="155" cy="105" rx="90" ry="28" fill="url(#cloudUnderside)"/>
+    </g>
+  </g>
+</svg>

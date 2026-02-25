@@ -503,7 +503,101 @@ export function FullscreenOtterDisplay({
           </div>
         )}
 
-        {/* Rain when token is dumping — intensity by same tiers as sad_idle / sad_idle_2 / sad_idle_3 */}
+        {/* When dumping: evening/night sky + stars + moon + clouds (BTC); rain falls in front */}
+        {trend === "down" && (() => {
+          const btcTier = weatherLayers?.btc ? getIntensityTier(weatherLayers.btc.priceChangePercent) : 2
+          const nightCloudCount = btcTier === 3 ? 12 : btcTier === 2 ? 10 : 8
+          const nightCloudOpacity = 0.45 + btcTier * 0.08
+          return (
+            <>
+              {/* Evening/night overlay — darker sky so no sunlight feel */}
+              <div
+                className="absolute inset-0 z-0 pointer-events-none"
+                style={{
+                  background: `
+                    linear-gradient(to bottom, rgba(15, 23, 42, 0.75) 0%, rgba(30, 41, 59, 0.5) 40%, rgba(51, 65, 85, 0.25) 70%, transparent 100%),
+                    radial-gradient(ellipse 80% 50% at 50% 30%, rgba(30, 41, 59, 0.4) 0%, transparent 60%)
+                  `,
+                }}
+              />
+              {/* Stars — only at night */}
+              <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+                {Array.from({ length: 65 }, (_, i) => (
+                  <div
+                    key={`star-${i}`}
+                    className="absolute rounded-full bg-white"
+                    style={{
+                      width: i % 5 === 0 ? 2 : 1,
+                      height: i % 5 === 0 ? 2 : 1,
+                      left: `${(i * 13.7 + 2) % 98}%`,
+                      top: `${(i * 11.3 + 3) % 55}%`,
+                      opacity: 0.4 + (i % 4) * 0.2,
+                      animation: "star-twinkle 3s ease-in-out infinite",
+                      animationDelay: `${(i % 20) * 0.15}s`,
+                    }}
+                  />
+                ))}
+              </div>
+              {/* Moon — visible in night sky while dumping */}
+              <div
+                className="absolute right-[12%] top-[14%] z-0 pointer-events-none"
+                style={{
+                  width: "max(100px, min(18vw, 140px))",
+                  height: "max(100px, min(18vw, 140px))",
+                }}
+              >
+                <img
+                  src="/weather/moon.svg"
+                  alt=""
+                  className="w-full h-full object-contain"
+                  style={{ filter: "drop-shadow(0 0 20px rgba(226,232,240,0.4))" }}
+                />
+              </div>
+              {/* Night clouds — same BTC-driven count, veil moon; clouds depend on BTC not day/night */}
+              <div
+                className="absolute inset-0 z-0"
+                style={{ opacity: nightCloudOpacity, willChange: "transform" }}
+              >
+                {Array.from({ length: nightCloudCount }, (_, i) => {
+                  const variant = i % 3
+                  const src = variant === 0 ? "/weather/cloud.svg" : variant === 1 ? "/weather/cloud-alt.svg" : "/weather/cloud-wisp.svg"
+                  const aspectRatio = variant === 2 ? "200 / 80" : variant === 0 ? "280 / 140" : "260 / 120"
+                  const left = `${(i * 19 + 5) % 90}%`
+                  const top = `${(i * 13 + 6) % 50}%`
+                  const scale = 0.5 + (i % 4) * 0.12
+                  const duration = 55 + (i % 22)
+                  const delay = (i * 3) % 11
+                  return (
+                    <div
+                      key={`night-cloud-${i}`}
+                      className="absolute pointer-events-none"
+                      style={{
+                        left,
+                        top,
+                        width: "clamp(90px, 24vw, 200px)",
+                        height: "auto",
+                        aspectRatio,
+                        transform: `scale(${scale})`,
+                        animation: "sky-cloud-drift 58s ease-in-out infinite",
+                        animationDuration: `${duration}s`,
+                        animationDelay: `-${delay}s`,
+                      }}
+                    >
+                      <img
+                        src={src}
+                        alt=""
+                        className="w-full h-full object-contain"
+                        style={{ opacity: 0.75, filter: "brightness(0.7) contrast(0.9)" }}
+                      />
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          )
+        })()}
+
+        {/* Rain when token is dumping — intensity by same tiers; evening/night rain */}
         {trend === "down" && (() => {
           const tier = getIntensityTier(priceChangePercent)
           const count = tier === 3 ? 55 : tier === 2 ? 38 : 22
@@ -536,12 +630,17 @@ export function FullscreenOtterDisplay({
           )
         })()}
 
-        {/* Sunrise + sun when token is rising — intensity by same tiers as idle / happy_idle_2 / happy_idle_3 */}
-        {trend === "up" && (() => {
-          const sunriseOpacity = intensityTier === 3 ? 0.8 : intensityTier === 2 ? 0.6 : 0.42
-          const sunScale = intensityTier === 3 ? 1 : intensityTier === 2 ? 0.82 : 0.65
-          const showFlowers = intensityTier >= 2
-          const flowerCount = intensityTier === 3 ? 14 : 7
+        {/* Sun + clouds only when NOT dumping; clouds depend on BTC only (not day/night) */}
+        {trend !== "down" &&
+        (() => {
+          const btcTier = weatherLayers?.btc ? getIntensityTier(weatherLayers.btc.priceChangePercent) : 2
+          const cloudCount = btcTier === 3 ? 12 : btcTier === 2 ? 10 : 8
+          const cloudLayerOpacity = 0.48 + btcTier * 0.06
+          const sunriseOpacity = trend === "up" ? (intensityTier === 3 ? 0.8 : intensityTier === 2 ? 0.6 : 0.42) : 0.35
+          const sunScale = trend === "up" ? (intensityTier === 3 ? 1 : intensityTier === 2 ? 0.82 : 0.65) : 0.5
+          const sunOpacity = trend === "up" ? (intensityTier === 3 ? 0.95 : intensityTier === 2 ? 0.88 : 0.75) : 0.7
+          const showFlowers = trend === "up" && intensityTier >= 2
+          const flowerCount = trend === "up" && intensityTier === 3 ? 14 : 7
           return (
             <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
               {/* Sunrise gradient — horizon glow, warm orange → pink → transparent */}
@@ -556,68 +655,75 @@ export function FullscreenOtterDisplay({
                   `,
                 }}
               />
-              {/* Sun — bright warm disc + corona + subtle rays (so it reads as sun, not moon) */}
+              {/* Sun image — only when up or neutral; never when dumping; larger size */}
               <div
                 className="absolute left-1/2 top-[12%] -translate-x-1/2"
                 style={{
-                  width: `${Math.min(26, 16 + intensityTier * 4)}vw`,
-                  height: `${Math.min(26, 16 + intensityTier * 4)}vw`,
+                  width: "max(220px, min(42vw, 320px))",
+                  height: "max(220px, min(42vw, 320px))",
                   transform: `translate(-50%, 0) scale(${sunScale})`,
+                  opacity: sunOpacity,
+                  animation: trend === "up" && intensityTier >= 2 ? "sunrise-sun-pulse 4s ease-in-out infinite" : undefined,
                 }}
               >
-                {/* Rays */}
-                <div
-                  className="absolute rounded-full"
-                  style={{
-                    inset: "-35%",
-                    opacity: intensityTier === 3 ? 0.38 : intensityTier === 2 ? 0.26 : 0.18,
-                    background:
-                      "repeating-conic-gradient(from 0deg, rgba(255, 200, 90, 0.55) 0deg 10deg, rgba(255, 180, 70, 0) 10deg 22deg)",
-                    maskImage: "radial-gradient(circle, transparent 0% 38%, rgba(0,0,0,1) 55%, transparent 72%)",
-                    WebkitMaskImage:
-                      "radial-gradient(circle, transparent 0% 38%, rgba(0,0,0,1) 55%, transparent 72%)",
-                    filter: "blur(0.6px)",
-                    willChange: "transform",
-                    animation:
-                      intensityTier >= 2 ? "sun-rays-rotate 26s linear infinite" : "sun-rays-rotate 34s linear infinite",
-                  }}
-                />
-                {/* Outer glow */}
-                <div
-                  className="absolute rounded-full"
-                  style={{
-                    inset: "-22%",
-                    background:
-                      "radial-gradient(circle, rgba(255, 240, 200, 0.55) 0%, rgba(255, 195, 95, 0.34) 40%, rgba(255, 170, 70, 0.12) 70%, transparent 78%)",
-                    filter: "blur(10px)",
-                    animation: intensityTier >= 2 ? "sunrise-sun-pulse 4s ease-in-out infinite" : undefined,
-                  }}
-                />
-                {/* Disc */}
-                <div
-                  className="absolute inset-0 rounded-full"
-                  style={{
-                    background: `
-                      radial-gradient(circle at 34% 32%, rgba(255, 255, 245, 0.98) 0%, rgba(255, 245, 210, 0.95) 28%, rgba(255, 210, 120, 0.9) 55%, rgba(255, 170, 65, 0.75) 80%, rgba(255, 145, 55, 0.6) 100%),
-                      radial-gradient(circle at 65% 70%, rgba(255, 255, 255, 0.14) 0%, transparent 55%)
-                    `,
-                    boxShadow:
-                      "0 0 90px 28px rgba(255, 200, 100, 0.42), 0 0 160px 60px rgba(255, 165, 70, 0.22)",
-                  }}
-                />
-                {/* Core highlight */}
-                <div
-                  className="absolute rounded-full"
-                  style={{
-                    inset: "18%",
-                    background:
-                      "radial-gradient(circle at 35% 35%, rgba(255, 255, 255, 0.9) 0%, rgba(255, 245, 210, 0.35) 55%, transparent 72%)",
-                    opacity: intensityTier === 3 ? 0.95 : 0.85,
-                    filter: "blur(0.5px)",
-                  }}
+                <img
+                  src="/weather/sun.svg"
+                  alt=""
+                  className="w-full h-full object-contain"
+                  style={{ filter: "drop-shadow(0 0 40px rgba(255,200,100,0.5))" }}
                 />
               </div>
-              {/* Flowers / petals — tier 2: few; tier 3: more, gentle float */}
+              {/* Clouds — upper layer veiling sun (only when not dumping) */}
+              <div
+                className="absolute inset-0"
+                style={{ opacity: cloudLayerOpacity, willChange: "transform" }}
+              >
+                {Array.from({ length: cloudCount }, (_, i) => {
+                  const variant = i % 3
+                  const src = variant === 0 ? "/weather/cloud.svg" : variant === 1 ? "/weather/cloud-alt.svg" : "/weather/cloud-wisp.svg"
+                  const aspectRatio = variant === 2 ? "200 / 80" : variant === 0 ? "280 / 140" : "260 / 120"
+                  const left = `${(i * 19 + 3) % 92}%`
+                  const top = `${(i * 13 + 5) % 48}%`
+                  const scale = 0.5 + (i % 4) * 0.15
+                  const duration = 50 + (i % 25)
+                  const delay = (i * 4) % 14
+                  const cloudOpacity = 0.82 + (i % 3) * 0.06
+                  return (
+                    <div
+                      key={`veil-cloud-${i}`}
+                      className="absolute pointer-events-none"
+                      style={{
+                        left,
+                        top,
+                        width: "clamp(100px, 26vw, 220px)",
+                        height: "auto",
+                        aspectRatio,
+                        transform: `scale(${scale})`,
+                        animation: "sky-cloud-drift 58s ease-in-out infinite",
+                        animationDuration: `${duration}s`,
+                        animationDelay: `-${delay}s`,
+                      }}
+                    >
+                      <img
+                        src={src}
+                        alt=""
+                        className="w-full h-full object-contain"
+                        style={{ opacity: cloudOpacity }}
+                      />
+                    </div>
+                  )
+                })}
+              </div>
+              {/* Diffuse light overlay — softens light through clouds (evening feel) */}
+              <div
+                className="absolute inset-0"
+                style={{
+                  background: "radial-gradient(ellipse 120% 80% at 50% 18%, rgba(255, 235, 200, 0.18) 0%, rgba(255, 220, 180, 0.08) 40%, transparent 70%)",
+                  pointerEvents: "none",
+                  mixBlendMode: "screen",
+                }}
+              />
+              {/* Flowers / petals — tier 2: few; tier 3: more, gentle float (only when up) */}
               {showFlowers &&
                 Array.from({ length: flowerCount }, (_, i) => {
                   const size = 8 + (i % 4)

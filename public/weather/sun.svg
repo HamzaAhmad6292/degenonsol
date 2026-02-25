@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" aria-hidden="true">
+  <defs>
+    <radialGradient id="sunCore" cx="35%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#fffef5" stop-opacity="1"/>
+      <stop offset="30%" stop-color="#fff5c4" stop-opacity="1"/>
+      <stop offset="55%" stop-color="#ffd966" stop-opacity="1"/>
+      <stop offset="80%" stop-color="#f0a030" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#e08020" stop-opacity="0.7"/>
+    </radialGradient>
+    <radialGradient id="sunGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fff8e0" stop-opacity="0.9"/>
+      <stop offset="40%" stop-color="#ffd54f" stop-opacity="0.5"/>
+      <stop offset="70%" stop-color="#ffb74d" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#ff9800" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="18" result="blur"/>
+      <feFlood flood-color="#ffcc80" flood-opacity="0.5"/>
+      <feComposite in2="blur" operator="in"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <!-- Outer soft glow -->
+  <circle cx="100" cy="100" r="75" fill="url(#sunGlow)" filter="url(#softGlow)" opacity="0.85"/>
+  <!-- Main disc with core highlight -->
+  <circle cx="100" cy="100" r="42" fill="url(#sunCore)" filter="url(#glow)"/>
+  <circle cx="100" cy="100" r="42" fill="url(#sunCore)"/>
+  <!-- Subtle highlight -->
+  <ellipse cx="72" cy="72" rx="18" ry="18" fill="rgba(255,255,255,0.4)" opacity="0.9"/>
+</svg>
