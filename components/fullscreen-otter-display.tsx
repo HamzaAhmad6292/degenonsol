@@ -3,6 +3,8 @@
 import { useEffect, useState, useRef, useCallback } from "react"
 import { motion } from "framer-motion"
 import { TokenLineChart } from "./token-line-chart"
+import { PineTree } from "./forest-tree"
+import { Sun } from "./sun-display"
 import { type TokenPrice } from "./token-price-fetcher"
 import { type GifState, type OneShotGif } from "@/app/chat/page"
 import { type LifecycleInfo, STAGE_DURATIONS } from "@/lib/lifecycle"
@@ -77,6 +79,15 @@ export function FullscreenOtterDisplay({
   const birthEndTimeRef = useRef<number>(0)
   const [, setBirthTick] = useState(0)
   const [birthMessageIndex, setBirthMessageIndex] = useState(0)
+  const [isNarrowViewport, setIsNarrowViewport] = useState(false)
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)")
+    const update = () => setIsNarrowViewport(mq.matches)
+    update()
+    mq.addEventListener("change", update)
+    return () => mq.removeEventListener("change", update)
+  }, [])
 
   // Birth phase: smooth loading bar and rotating messages
   useEffect(() => {
@@ -302,174 +313,107 @@ export function FullscreenOtterDisplay({
           />
         </div>
 
-        {/* Forest background — silhouettes and ground so it doesn't feel empty */}
+        {/* Background trees (behind otter) + grass floor (otter stands on) */}
         <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-          {/* Ground / horizon gradient */}
+          {/* Grass floor — proper ground for otter to stand on; soft top edge into sky */}
           <div
-            className="absolute inset-x-0 bottom-0 h-[55%]"
+            className="absolute inset-x-0 bottom-0"
             style={{
-              background: "linear-gradient(to top, rgba(15, 35, 25, 0.5) 0%, rgba(20, 45, 35, 0.2) 25%, transparent 70%)",
+              height: "30%",
+              minHeight: "140px",
+              background: `
+                linear-gradient(to top, transparent 0%, rgba(22, 52, 35, 0.15) 12%, rgba(28, 62, 42, 0.4) 35%, rgba(18, 42, 28, 0.95) 70%, rgba(12, 35, 22, 0.98) 100%),
+                linear-gradient(105deg, transparent 0%, rgba(25, 58, 38, 0.25) 50%, transparent 100%),
+                linear-gradient(75deg, transparent 0%, rgba(20, 48, 32, 0.2) 50%, transparent 100%),
+                linear-gradient(to top, rgba(15, 38, 25, 0.98) 0%, rgba(22, 55, 36, 0.92) 28%, rgba(28, 68, 44, 0.88) 55%, rgba(32, 72, 48, 0.9) 100%)
+              `,
+              boxShadow: "inset 0 -2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.06)",
             }}
           />
-          {/* Distant tree-line haze to avoid mountain look */}
+          {/* Subtle grass blade texture — fine horizontal variation */}
           <div
-            className="absolute inset-x-0 bottom-[16%] h-[18%]"
+            className="absolute inset-x-0 bottom-0 opacity-40"
             style={{
-              background:
-                "radial-gradient(ellipse 120% 90% at 50% 100%, rgba(14, 36, 24, 0.42) 0%, rgba(10, 25, 18, 0.24) 54%, transparent 78%)",
-              filter: "blur(3px)",
+              height: "30%",
+              minHeight: "140px",
+              backgroundImage: "repeating-linear-gradient(90deg, transparent 0px, transparent 3px, rgba(255,255,255,0.02) 3px, rgba(255,255,255,0.02) 4px), repeating-linear-gradient(178deg, transparent 0px, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 3px)",
+              backgroundSize: "8px 6px",
+              pointerEvents: "none",
             }}
           />
-          {/* Back layer — smaller conifer clusters */}
+          {/* Back layer — pine trees (inline SVG component) */}
           {[
-            { left: "2%", canopy: 4.8, height: 32, opacity: 0.28 },
-            { left: "13%", canopy: 4.1, height: 28, opacity: 0.24 },
-            { left: "25%", canopy: 4.6, height: 31, opacity: 0.26 },
-            { left: "39%", canopy: 4.3, height: 29, opacity: 0.25 },
-            { left: "52%", canopy: 5, height: 33, opacity: 0.27 },
-            { left: "67%", canopy: 4.2, height: 30, opacity: 0.24 },
-            { left: "80%", canopy: 4.7, height: 32, opacity: 0.26 },
-            { left: "91%", canopy: 4.1, height: 28, opacity: 0.23 },
+            { left: "2%", w: 4.2, h: 30, opacity: 0.28 },
+            { left: "14%", w: 3.8, h: 27, opacity: 0.24 },
+            { left: "26%", w: 4.4, h: 31, opacity: 0.26 },
+            { left: "40%", w: 4, h: 28, opacity: 0.25 },
+            { left: "53%", w: 4.6, h: 32, opacity: 0.27 },
+            { left: "68%", w: 3.9, h: 29, opacity: 0.24 },
+            { left: "81%", w: 4.3, h: 31, opacity: 0.26 },
+            { left: "92%", w: 3.7, h: 26, opacity: 0.23 },
           ].map((tree, i) => (
-            <div
+            <PineTree
               key={`tree-back-${i}`}
-              className="absolute bottom-[12%]"
+              id={`tree-back-${i}`}
+              variant={((i % 3) + 1) as 1 | 2 | 3}
+              className="absolute bottom-[30%]"
               style={{
                 left: tree.left,
-                width: `clamp(22px, ${tree.canopy}vw, 62px)`,
-                height: `clamp(84px, ${tree.height}vh, 185px)`,
+                width: isNarrowViewport
+                  ? `clamp(28px, ${tree.w * 1.2}vw, 72px)`
+                  : `clamp(20px, ${tree.w}vw, 56px)`,
+                height: isNarrowViewport
+                  ? `clamp(110px, ${tree.h * 1.45}vh, 240px)`
+                  : `clamp(78px, ${tree.h}vh, 165px)`,
                 opacity: tree.opacity,
               }}
-            >
-              <div
-                className="absolute left-1/2 bottom-0 -translate-x-1/2 rounded-sm"
-                style={{
-                  width: "clamp(3px, 0.45vw, 7px)",
-                  height: "28%",
-                  background: "linear-gradient(180deg, rgba(36, 27, 18, 0.65) 0%, rgba(22, 16, 10, 0.82) 100%)",
-                }}
-              />
-              <div
-                className="absolute left-1/2 -translate-x-1/2 rounded-full"
-                style={{
-                  bottom: "22%",
-                  width: "100%",
-                  height: "33%",
-                  background:
-                    "radial-gradient(ellipse 85% 70% at 50% 70%, rgba(16, 44, 30, 0.95) 0%, rgba(8, 24, 17, 0.9) 100%)",
-                }}
-              />
-              <div
-                className="absolute left-1/2 -translate-x-1/2 rounded-full"
-                style={{
-                  bottom: "44%",
-                  width: "82%",
-                  height: "29%",
-                  background:
-                    "radial-gradient(ellipse 85% 70% at 50% 70%, rgba(17, 48, 32, 0.9) 0%, rgba(9, 26, 18, 0.88) 100%)",
-                }}
-              />
-              <div
-                className="absolute left-1/2 -translate-x-1/2 rounded-full"
-                style={{
-                  bottom: "65%",
-                  width: "63%",
-                  height: "25%",
-                  background:
-                    "radial-gradient(ellipse 85% 70% at 50% 75%, rgba(20, 54, 36, 0.82) 0%, rgba(10, 29, 20, 0.84) 100%)",
-                }}
-              />
-            </div>
+            />
           ))}
-          {/* Mid layer — broader canopy trees */}
+          {/* Mid layer — taller pines */}
           {[
-            { left: "-2%", canopy: 7.8, height: 40, opacity: 0.34 },
-            { left: "10%", canopy: 6.9, height: 38, opacity: 0.31 },
-            { left: "24%", canopy: 8.3, height: 42, opacity: 0.35 },
-            { left: "39%", canopy: 7.1, height: 39, opacity: 0.32 },
-            { left: "55%", canopy: 8.8, height: 43, opacity: 0.36 },
-            { left: "72%", canopy: 7.5, height: 40, opacity: 0.33 },
-            { left: "87%", canopy: 7.9, height: 41, opacity: 0.34 },
+            { left: "-1%", w: 7.2, h: 38, opacity: 0.34 },
+            { left: "11%", w: 6.4, h: 36, opacity: 0.31 },
+            { left: "25%", w: 7.8, h: 40, opacity: 0.35 },
+            { left: "40%", w: 6.6, h: 37, opacity: 0.32 },
+            { left: "56%", w: 8, h: 41, opacity: 0.36 },
+            { left: "73%", w: 7, h: 38, opacity: 0.33 },
+            { left: "88%", w: 7.4, h: 39, opacity: 0.34 },
           ].map((tree, i) => (
-            <div
+            <PineTree
               key={`tree-mid-${i}`}
-              className="absolute bottom-[4%]"
+              id={`tree-mid-${i}`}
+              variant={((i % 3) + 1) as 1 | 2 | 3}
+              className="absolute bottom-[28%]"
               style={{
                 left: tree.left,
-                width: `clamp(36px, ${tree.canopy}vw, 105px)`,
-                height: `clamp(108px, ${tree.height}vh, 235px)`,
+                width: isNarrowViewport
+                  ? `clamp(44px, ${tree.w * 1.2}vw, 120px)`
+                  : `clamp(32px, ${tree.w}vw, 95px)`,
+                height: isNarrowViewport
+                  ? `clamp(145px, ${tree.h * 1.45}vh, 300px)`
+                  : `clamp(100px, ${tree.h}vh, 210px)`,
                 opacity: tree.opacity,
               }}
-            >
-              <div
-                className="absolute left-1/2 bottom-0 -translate-x-1/2 rounded-sm"
-                style={{
-                  width: "clamp(4px, 0.6vw, 10px)",
-                  height: "26%",
-                  background: "linear-gradient(180deg, rgba(45, 34, 22, 0.75) 0%, rgba(22, 16, 11, 0.9) 100%)",
-                }}
-              />
-              <div
-                className="absolute left-1/2 -translate-x-1/2 rounded-full"
-                style={{
-                  bottom: "20%",
-                  width: "100%",
-                  height: "35%",
-                  background:
-                    "radial-gradient(ellipse 90% 75% at 50% 72%, rgba(18, 52, 34, 0.95) 0%, rgba(10, 30, 21, 0.92) 100%)",
-                }}
-              />
-              <div
-                className="absolute left-[44%] -translate-x-1/2 rounded-full"
-                style={{
-                  bottom: "45%",
-                  width: "72%",
-                  height: "30%",
-                  background:
-                    "radial-gradient(ellipse 88% 70% at 50% 72%, rgba(22, 58, 39, 0.92) 0%, rgba(11, 33, 23, 0.9) 100%)",
-                }}
-              />
-              <div
-                className="absolute left-[58%] -translate-x-1/2 rounded-full"
-                style={{
-                  bottom: "47%",
-                  width: "68%",
-                  height: "28%",
-                  background:
-                    "radial-gradient(ellipse 88% 70% at 50% 72%, rgba(20, 55, 37, 0.9) 0%, rgba(10, 31, 22, 0.88) 100%)",
-                }}
-              />
-              <div
-                className="absolute left-1/2 -translate-x-1/2 rounded-full"
-                style={{
-                  bottom: "66%",
-                  width: "56%",
-                  height: "22%",
-                  background:
-                    "radial-gradient(ellipse 84% 68% at 50% 75%, rgba(26, 65, 44, 0.84) 0%, rgba(12, 35, 24, 0.86) 100%)",
-                }}
-              />
-            </div>
+            />
           ))}
-          {/* Front shrubs for depth and stronger forest floor */}
+          {/* Distant shrub silhouettes at horizon only (behind grass, not the floor) */}
           {[
-            { left: "-8%", width: 26, height: 18, opacity: 0.28 },
-            { left: "14%", width: 22, height: 16, opacity: 0.24 },
-            { left: "36%", width: 27, height: 18, opacity: 0.3 },
-            { left: "60%", width: 24, height: 17, opacity: 0.27 },
-            { left: "82%", width: 28, height: 19, opacity: 0.29 },
+            { left: "8%", width: 18, height: 10, opacity: 0.2 },
+            { left: "42%", width: 20, height: 11, opacity: 0.18 },
+            { left: "75%", width: 17, height: 9, opacity: 0.19 },
           ].map((shrub, i) => (
             <div
               key={`shrub-${i}`}
-              className="absolute bottom-0 rounded-full"
+              className="absolute rounded-full"
               style={{
                 left: shrub.left,
-                width: `clamp(120px, ${shrub.width}vw, 420px)`,
-                height: `clamp(64px, ${shrub.height}vh, 180px)`,
+                bottom: "28%",
+                width: `clamp(60px, ${shrub.width}vw, 200px)`,
+                height: `clamp(30px, ${shrub.height}vh, 80px)`,
                 opacity: shrub.opacity,
                 background:
-                  "radial-gradient(ellipse 100% 100% at 50% 100%, rgba(17, 44, 30, 0.9) 0%, rgba(10, 27, 19, 0.76) 100%)",
-                filter: "blur(0.3px)",
+                  "radial-gradient(ellipse 100% 100% at 50% 100%, rgba(18, 48, 32, 0.85) 0%, rgba(12, 32, 22, 0.7) 100%)",
+                filter: "blur(1px)",
               }}
             />
           ))}
@@ -507,7 +451,7 @@ export function FullscreenOtterDisplay({
         {trend === "down" && (() => {
           const btcTier = weatherLayers?.btc ? getIntensityTier(weatherLayers.btc.priceChangePercent) : 2
           const nightCloudCount = btcTier === 3 ? 12 : btcTier === 2 ? 10 : 8
-          const nightCloudOpacity = 0.45 + btcTier * 0.08
+          const nightCloudOpacity = 0.78 + btcTier * 0.06
           return (
             <>
               {/* Evening/night overlay — darker sky so no sunlight feel */}
@@ -587,7 +531,7 @@ export function FullscreenOtterDisplay({
                         src={src}
                         alt=""
                         className="w-full h-full object-contain"
-                        style={{ opacity: 0.75, filter: "brightness(0.7) contrast(0.9)" }}
+                        style={{ opacity: 0.94, filter: "brightness(0.7) contrast(0.9)" }}
                       />
                     </div>
                   )
@@ -635,7 +579,7 @@ export function FullscreenOtterDisplay({
         (() => {
           const btcTier = weatherLayers?.btc ? getIntensityTier(weatherLayers.btc.priceChangePercent) : 2
           const cloudCount = btcTier === 3 ? 12 : btcTier === 2 ? 10 : 8
-          const cloudLayerOpacity = 0.48 + btcTier * 0.06
+          const cloudLayerOpacity = 0.78 + btcTier * 0.05
           const sunriseOpacity = trend === "up" ? (intensityTier === 3 ? 0.8 : intensityTier === 2 ? 0.6 : 0.42) : 0.35
           const sunScale = trend === "up" ? (intensityTier === 3 ? 1 : intensityTier === 2 ? 0.82 : 0.65) : 0.5
           const sunOpacity = trend === "up" ? (intensityTier === 3 ? 0.95 : intensityTier === 2 ? 0.88 : 0.75) : 0.7
@@ -655,8 +599,8 @@ export function FullscreenOtterDisplay({
                   `,
                 }}
               />
-              {/* Sun image — only when up or neutral; never when dumping; larger size */}
-              <div
+              {/* Sun — soft gradient component, no sharp circle */}
+              <Sun
                 className="absolute left-1/2 top-[12%] -translate-x-1/2"
                 style={{
                   width: "max(220px, min(42vw, 320px))",
@@ -665,14 +609,7 @@ export function FullscreenOtterDisplay({
                   opacity: sunOpacity,
                   animation: trend === "up" && intensityTier >= 2 ? "sunrise-sun-pulse 4s ease-in-out infinite" : undefined,
                 }}
-              >
-                <img
-                  src="/weather/sun.svg"
-                  alt=""
-                  className="w-full h-full object-contain"
-                  style={{ filter: "drop-shadow(0 0 40px rgba(255,200,100,0.5))" }}
-                />
-              </div>
+              />
               {/* Clouds — upper layer veiling sun (only when not dumping) */}
               <div
                 className="absolute inset-0"
@@ -687,7 +624,7 @@ export function FullscreenOtterDisplay({
                   const scale = 0.5 + (i % 4) * 0.15
                   const duration = 50 + (i % 25)
                   const delay = (i * 4) % 14
-                  const cloudOpacity = 0.82 + (i % 3) * 0.06
+                  const cloudOpacity = 0.92 + (i % 3) * 0.03
                   return (
                     <div
                       key={`veil-cloud-${i}`}

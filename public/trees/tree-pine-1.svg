@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 220" aria-hidden="true">
+  <defs>
+    <linearGradient id="pine1Fill" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0c2218"/>
+      <stop offset="100%" stop-color="#0a1c14"/>
+    </linearGradient>
+    <linearGradient id="pine1Trunk" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1a1510"/>
+      <stop offset="100%" stop-color="#0f0c08"/>
+    </linearGradient>
+  </defs>
+  <!-- Stem — clearly visible trunk from foliage down to base -->
+  <path fill="url(#pine1Trunk)" d="M48 220 L72 220 L68 138 L52 138 Z"/>
+  <!-- Layered foliage above the stem -->
+  <path fill="url(#pine1Fill)" d="M12 168 L32 152 L60 128 L88 152 L108 168 L95 174 L60 138 L25 174 Z"/>
+  <path fill="url(#pine1Fill)" d="M20 132 L42 108 L60 88 L78 108 L100 132 L90 138 L60 112 L30 138 Z"/>
+  <path fill="url(#pine1Fill)" d="M28 98 L48 72 L60 52 L72 72 L92 98 L82 102 L60 78 L38 102 Z"/>
+  <path fill="url(#pine1Fill)" d="M36 62 L52 40 L60 22 L68 40 L84 62 L76 66 L60 46 L44 66 Z"/>
+  <path fill="url(#pine1Fill)" d="M44 32 L54 18 L60 6 L66 18 L76 32 L60 24 Z"/>
+</svg>
