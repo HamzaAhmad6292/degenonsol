@@ -14,6 +14,15 @@ function formatMessageTime(date: Date): string {
   return date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit", hour12: true })
 }
 
+/** User-facing label when Degen’s mood/character changes */
+function moodToLabel(mood: GifState): string {
+  if (mood.startsWith("happy")) return "in a good mood"
+  if (mood.startsWith("sad")) return "a bit down"
+  if (mood === "lower50" || mood === "upper50") return "checking the chart"
+  if (mood === "slap") return "playful"
+  return "here"
+}
+
 interface SideChatBubblesProps {
   onSentimentChange?: (sentiment: Sentiment | null) => void
   onSpeakingChange?: (isSpeaking: boolean) => void
@@ -59,13 +68,16 @@ export function SideChatBubbles({
   faceServiceUnavailable,
 }: SideChatBubblesProps) {
   const [input, setInput] = useState("")
+  const [isMobile, setIsMobile] = useState(false)
   const [isChatVisible, setIsChatVisible] = useState(true)
   const [isRecording, setIsRecording] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [showScrollToBottom, setShowScrollToBottom] = useState(false)
   const [arPulseDone, setArPulseDone] = useState(false)
+  const [moodHint, setMoodHint] = useState<string | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const previousMoodRef = useRef<GifState | null>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const conversationIdRef = useRef<string>(`conv-${Date.now()}`)
   const recognitionRef = useRef<any>(null)
@@ -147,6 +159,36 @@ export function SideChatBubbles({
     return () => clearTimeout(t)
   }, [onArOpen, arPulseDone])
 
+  const mobileInitializedRef = useRef(false)
+  // Mobile: default to compact (single bubble) so Degen stays visible
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)")
+    const update = () => {
+      setIsMobile(mq.matches)
+      if (mq.matches && !mobileInitializedRef.current) {
+        mobileInitializedRef.current = true
+        setIsChatVisible(false)
+      }
+    }
+    update()
+    mq.addEventListener("change", update)
+    return () => mq.removeEventListener("change", update)
+  }, [])
+
+  // Character change hint — "Degen is feeling …" when mood changes
+  useEffect(() => {
+    if (previousMoodRef.current === null) {
+      previousMoodRef.current = currentMood
+      return
+    }
+    if (previousMoodRef.current === currentMood) return
+    const label = moodToLabel(currentMood)
+    previousMoodRef.current = currentMood
+    setMoodHint(`Degen is ${label}`)
+    const t = setTimeout(() => setMoodHint(null), 3200)
+    return () => clearTimeout(t)
+  }, [currentMood])
+
   // Sync ref with state for voice recording
   useEffect(() => {
     inputValueRef.current = input
@@ -162,8 +204,8 @@ export function SideChatBubbles({
     const textToSend = textOverride || input
     if (!textToSend.trim() || isLoading) return
     
-    // Ensure chat is visible when sending
-    if (!isChatVisible) setIsChatVisible(true)
+    // On desktop, show full chat when sending; on mobile keep compact so Degen stays visible (especially during voice)
+    if (!isChatVisible && !isMobile) setIsChatVisible(true)
 
     // Analyze sentiment of user message
     let freshSentiment: Sentiment = "neutral"
@@ -233,7 +275,7 @@ export function SideChatBubbles({
     
     // Use streaming chat
     await sendMessage(textToSend.trim(), moodToSend, currentTrend, weatherContext)
-  }, [input, isLoading, isChatVisible, currentMood, currentTrend, onSentimentChange, sendMessage, weatherContext])
+  }, [input, isLoading, isChatVisible, isMobile, currentMood, currentTrend, onSentimentChange, sendMessage, weatherContext])
 
   // Keep ref in sync for use inside recognition callbacks (must be after handleSend is defined)
   useEffect(() => {
@@ -299,8 +341,74 @@ export function SideChatBubbles({
 
   const isInInitialBatch = useCallback((id: string) => initialBatchIdsRef.current.has(id), [])
 
+  const latestDegenMessage = [...messages].reverse().find((m) => m.role === "assistant")
+  const singleBubbleContent = streamingContent ?? latestDegenMessage?.content ?? null
+
   return (
     <>
+      {/* When character/mood changes, brief hint so user isn’t confused */}
+      <AnimatePresence>
+        {moodHint && (
+          <motion.div
+            key={moodHint}
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.25 }}
+            className="fixed top-20 left-1/2 -translate-x-1/2 z-[35] px-4 py-2 rounded-full text-sm font-medium shadow-lg max-w-[90vw] text-center"
+            style={{
+              background: "var(--chat-glass-bg-received)",
+              color: "var(--chat-text)",
+              border: "var(--chat-glass-border)",
+              backdropFilter: "var(--chat-glass-backdrop)",
+              WebkitBackdropFilter: "var(--chat-glass-backdrop)",
+            }}
+          >
+            {moodHint}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Compact: single Degen bubble at top so otter stays visible (mobile default) */}
+      <AnimatePresence>
+        {!isChatVisible && singleBubbleContent && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            transition={{ duration: 0.25 }}
+            className="fixed top-20 left-4 right-4 z-30 max-h-[22vh] overflow-y-auto"
+            style={{ fontFamily: "var(--font-chat), var(--font-sans), sans-serif" }}
+          >
+            <div
+              className="rounded-xl rounded-bl-none p-3 max-w-full"
+              style={{
+                background: "var(--chat-glass-bg-received)",
+                backdropFilter: "var(--chat-glass-backdrop)",
+                WebkitBackdropFilter: "var(--chat-glass-backdrop)",
+                border: "var(--chat-glass-border)",
+                boxShadow: "var(--chat-glass-shadow)",
+                borderRadius: "var(--chat-radius-lg)",
+              }}
+            >
+              <p style={{ color: "var(--chat-text-muted)", fontSize: "0.65rem", fontWeight: 600, marginBottom: "0.25rem", letterSpacing: "0.02em" }}>
+                Degen
+              </p>
+              <p style={{ color: "var(--chat-text)", lineHeight: 1.45, whiteSpace: "pre-wrap", fontWeight: 500, fontSize: "0.8125rem", overflowWrap: "break-word", wordBreak: "break-word" }}>
+                {streamingContent ? (
+                  <>
+                    {streamingContent}
+                    <span className="inline-block w-1.5 h-4 bg-primary ml-1 animate-pulse" style={{ borderRadius: 2 }} />
+                  </>
+                ) : (
+                  latestDegenMessage!.content
+                )}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence mode="wait">
         {isChatVisible && (
           <motion.div

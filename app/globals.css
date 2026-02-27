@@ -41,9 +41,6 @@
   --chat-muted: rgba(160, 160, 160, 0.7);
   --chat-border: rgba(255, 255, 255, 0.08);
   --chat-border-sent: rgba(212, 175, 55, 0.25);
-  --chat-text: rgba(255, 255, 255, 0.95);
-  --chat-text-secondary: rgba(255, 255, 255, 0.85);
-  --chat-text-muted: rgba(255, 255, 255, 0.5);
   --chat-radius: 1rem;
   --chat-radius-lg: 1.25rem;
   --chat-space-bubble: 0.75rem;
@@ -51,14 +48,18 @@
   --chat-shadow-surface: 0 4px 24px rgba(0, 0, 0, 0.35);
   --chat-shadow-input: 0 4px 20px rgba(0, 0, 0, 0.25);
 
-  /* Liquid glass — light blur + very low tint so otter is visible through bubbles */
-  --chat-glass-backdrop: blur(16px) saturate(1.3);
-  --chat-glass-bg-received: rgba(255, 255, 255, 0.015);
-  --chat-glass-bg-sent: rgba(212, 175, 55, 0.03);
-  --chat-glass-border: 1px solid rgba(255, 255, 255, 0.12);
-  --chat-glass-border-sent: 1px solid rgba(212, 175, 55, 0.22);
-  --chat-glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(255, 255, 255, 0.04);
-  --chat-glass-shadow-sent: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15), inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+  /* Liquid glass bubbles — translucent, blur, light border, inset highlight (readable text kept below) */
+  --chat-glass-backdrop: blur(20px) saturate(1.4);
+  --chat-glass-bg-received: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.05) 100%);
+  --chat-glass-bg-sent: linear-gradient(135deg, rgba(212, 175, 55, 0.14) 0%, rgba(212, 175, 55, 0.05) 100%);
+  --chat-glass-border: 1px solid rgba(255, 255, 255, 0.22);
+  --chat-glass-border-sent: 1px solid rgba(212, 175, 55, 0.35);
+  --chat-glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25), inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+  --chat-glass-shadow-sent: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -1px 0 rgba(0, 0, 0, 0.05);
+  /* Text on glass: high contrast so letters stay easy to see on phone */
+  --chat-text: #f4f4f5;
+  --chat-text-secondary: #e4e4e7;
+  --chat-text-muted: #a1a1aa;
 
   /* Motion system — GPU-friendly, purpose-driven */
   --motion-micro: 150ms;
